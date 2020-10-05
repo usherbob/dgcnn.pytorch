@@ -32,6 +32,25 @@ def cal_loss(pred, gold, smoothing=True):
 
     return loss
 
+def compute_chamfer_distance(p1, p2):
+    '''
+    Calculate Chamfer Distance between two point sets
+    :param p1: size[b, D, N]
+    :param p2: size[b, D, M]
+    :param debug: whether need to output debug info
+    :return: sum of Chamfer Distance of two point sets
+    '''
+
+    diff = p1[:, :, :, None] - p2[:, :, None, :]
+    dist = torch.sum(diff*diff,  dim=1) #[B, N, M]
+    # dist1 = dist
+    # dist2 = torch.transpose(dist, 1, 2)
+
+    dist_min1, _ = torch.min(dist, dim=1)
+    dist_min2, _ = torch.min(dist, dim=2)
+
+    return (torch.sum(dist_min1)/dist.shape[1] + torch.sum(dist_min2)/dist.shape[2])
+    # return dist_min1, dist_min2
 
 class IOStream():
     def __init__(self, path):
