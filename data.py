@@ -89,7 +89,7 @@ def load_data_cls(partition):
 
 
 def load_data_partseg(partition):
-    download_shapenetpart()
+    # download_shapenetpart()
     BASE_DIR = '/root'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
@@ -125,9 +125,9 @@ def prepare_test_data_semseg():
 
 
 def load_data_semseg(partition, test_area):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = '/root'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
-    download_S3DIS()
+    # download_S3DIS()
     prepare_test_data_semseg()
     if partition == 'train':
         data_dir = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data')
@@ -219,7 +219,8 @@ class ShapeNetPart(Dataset):
             self.data = self.data[indices]
             self.label = self.label[indices]
             self.seg = self.seg[indices]
-            self.seg_num_all = self.seg_num[id_choice]
+            # self.seg_num_all = self.seg_num[id_choice]
+            self.seg_num_all = 50
             self.seg_start_index = self.index_start[id_choice]
         else:
             self.seg_num_all = 50

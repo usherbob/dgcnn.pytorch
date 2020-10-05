@@ -250,7 +250,7 @@ def test(args, io):
         seg_pred = seg_pred.permute(0, 2, 1).contiguous()
         pred = seg_pred.max(dim=2)[1]
         seg_np = seg.cpu().numpy()
-        pred_np = pred.detach().cpu().numpy()
+        pred_np = pred.detach().cpu().numpy() - seg_start_index
         test_true_cls.append(seg_np.reshape(-1))
         test_pred_cls.append(pred_np.reshape(-1))
         test_true_seg.append(seg_np)
