@@ -9,7 +9,7 @@ import data_prep_util
 import indoor3d_util
 
 # Constants
-data_dir = os.path.join(ROOT_DIR, 'data')
+data_dir = '/root/data'
 indoor3d_data_dir = os.path.join(data_dir, 'stanford_indoor3d')
 NUM_POINT = 4096
 H5_BATCH_SIZE = 1000
