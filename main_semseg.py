@@ -31,6 +31,8 @@ def _init_():
         os.makedirs('/root/ckpt/semseg/'+args.exp_name)
     if not os.path.exists('/root/ckpt/semseg/'+args.exp_name+'/'+'models'):
         os.makedirs('/root/ckpt/semseg/'+args.exp_name+'/'+'models')
+    if not os.path.exists('/root/ckpt/semseg/'+args.exp_name+'/'+'visu'):
+        os.makedirs('/root/ckpt/semseg/'+args.exp_name+'/'+'visu')
     os.system('cp main_semseg.py /root/ckpt/semseg'+'/'+args.exp_name+'/'+'main_semseg.py.backup')
     os.system('cp model.py /root/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py /root/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
@@ -65,7 +67,7 @@ def train(args, io):
     print(str(model))
 
     if args.model_root is not None:
-        model.load_state_dict(torch.load(args.model_root), strict=False)
+        model.load_state_dict(torch.load('/root/ckpt/semseg/%s/models/model_%s.t7' % (args.model_root, args.test_area)), strict=False)
     model = nn.DataParallel(model)
     print("Let's use", torch.cuda.device_count(), "GPUs!")
 
@@ -205,6 +207,7 @@ def test(args, io):
     all_pred_cls = []
     all_true_seg = []
     all_pred_seg = []
+    batch_count = 0
     for test_area in range(1,7):
         test_area = str(test_area)
         if (args.test_area == 'all') or (test_area == args.test_area):
@@ -229,10 +232,11 @@ def test(args, io):
             test_true_seg = []
             test_pred_seg = []
             for data, seg in test_loader:
+                batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred = model(data)
+                seg_pred, node1, node2, node3 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 pred = seg_pred.max(dim=2)[1]
                 seg_np = seg.cpu().numpy()
@@ -241,6 +245,20 @@ def test(args, io):
                 test_pred_cls.append(pred_np.reshape(-1))
                 test_true_seg.append(seg_np)
                 test_pred_seg.append(pred_np)
+                if args.visu and batch_count % 5 == 0:
+                    for i in range(data.shape[0]):
+                        np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (
+                        args.exp_name, batch_count * args.test_batch_size + i),
+                                data[i, :, :].detach().cpu().numpy())
+                        np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (
+                        args.exp_name, batch_count * args.test_batch_size + i),
+                                node1[i, :, :].detach().cpu().numpy())
+                        np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (
+                        args.exp_name, batch_count * args.test_batch_size + i),
+                                node2[i, :, :].detach().cpu().numpy())
+                        np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (
+                        args.exp_name, batch_count * args.test_batch_size + i),
+                                node3[i, :, :].detach().cpu().numpy())
             test_true_cls = np.concatenate(test_true_cls)
             test_pred_cls = np.concatenate(test_pred_cls)
             test_acc = metrics.accuracy_score(test_true_cls, test_pred_cls)
@@ -315,6 +333,8 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
     parser.add_argument('--model_root', type=str, default='', metavar='N',
                         help='Pretrained model root')
+    parser.add_argument('--visu', type=bool, default=False,
+                        help='visualize atp selection')
     args = parser.parse_args()
 
     _init_()

@@ -256,13 +256,14 @@ def test(args, io):
     model.load_state_dict(torch.load(args.model_path))
     model = model.eval()
     test_acc = 0.0
-    count = 0.0
+    batch_count = 0
     test_true_cls = []
     test_pred_cls = []
     test_true_seg = []
     test_pred_seg = []
     test_label_seg = []
     for data, label, seg in test_loader:
+        batch_count += 1
         seg = seg - seg_start_index
         label_one_hot = np.zeros((label.shape[0], 16))
         for idx in range(label.shape[0]):
@@ -281,15 +282,15 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
-        if args.visu and count % 5 == 0:
+        if args.visu and batch_count % 5 == 0:
             for i in range(node0.shape[0]):
-                np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         node0[i, :, :].detach().cpu().numpy())
-                np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         node1[i, :, :].detach().cpu().numpy())
-                np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         node2[i, :, :].detach().cpu().numpy())
-                np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         node3[i, :, :].detach().cpu().numpy())
 
     test_true_cls = np.concatenate(test_true_cls)
