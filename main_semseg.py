@@ -158,27 +158,28 @@ def train(args, io):
         test_pred_cls = []
         test_true_seg = []
         test_pred_seg = []
-        for data, seg in test_loader:
-            data, seg = data.to(device), seg.to(device)
-            data = data.permute(0, 2, 1)
-            batch_size = data.size()[0]
-            seg_pred, node1, node2, node3 = model(data)
-            seg_pred = seg_pred.permute(0, 2, 1).contiguous()
-            loss = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1)\
-                      + compute_chamfer_distance(node3, node2)
-            loss = loss_cls + 0.1 * loss_cd
-            pred = seg_pred.max(dim=2)[1]
-            count += batch_size
-            test_loss += loss.item() * batch_size
-            test_cd_loss += loss_cd.item() * batch_size
-            test_cls_loss += loss_cls.item() * batch_size
-            seg_np = seg.cpu().numpy()
-            pred_np = pred.detach().cpu().numpy()
-            test_true_cls.append(seg_np.reshape(-1))
-            test_pred_cls.append(pred_np.reshape(-1))
-            test_true_seg.append(seg_np)
-            test_pred_seg.append(pred_np)
+        with torch.no_grad():
+            for data, seg in test_loader:
+                data, seg = data.to(device), seg.to(device)
+                data = data.permute(0, 2, 1)
+                batch_size = data.size()[0]
+                seg_pred, node1, node2, node3 = model(data)
+                seg_pred = seg_pred.permute(0, 2, 1).contiguous()
+                loss = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
+                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1)\
+                          + compute_chamfer_distance(node3, node2)
+                loss = loss_cls + 0.1 * loss_cd
+                pred = seg_pred.max(dim=2)[1]
+                count += batch_size
+                test_loss += loss.item() * batch_size
+                test_cd_loss += loss_cd.item() * batch_size
+                test_cls_loss += loss_cls.item() * batch_size
+                seg_np = seg.cpu().numpy()
+                pred_np = pred.detach().cpu().numpy()
+                test_true_cls.append(seg_np.reshape(-1))
+                test_pred_cls.append(pred_np.reshape(-1))
+                test_true_seg.append(seg_np)
+                test_pred_seg.append(pred_np)
         test_true_cls = np.concatenate(test_true_cls)
         test_pred_cls = np.concatenate(test_pred_cls)
         test_acc = metrics.accuracy_score(test_true_cls, test_pred_cls)
