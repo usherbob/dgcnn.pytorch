@@ -223,7 +223,7 @@ def test(args, io):
                 raise Exception("Not implemented")
 
             model = nn.DataParallel(model)
-            model.load_state_dict(torch.load(os.path.join(args.model_root, '/models/model_%s.t7' % test_area)))
+            model.load_state_dict(torch.load(os.path.join(args.model_root, 'models/model_%s.t7' % test_area)))
             model = model.eval()
             test_acc = 0.0
             count = 0.0
