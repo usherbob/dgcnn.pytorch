@@ -422,7 +422,7 @@ class DGCNN_semseg(nn.Module):
         self.pool2 = Pool(self.args.num_points // 16, 64, 0.2)
         self.pool3 = Pool(self.args.num_points // 64, 64, 0.2)
 
-        self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
+        self.conv1 = nn.Sequential(nn.Conv2d(18, 64, kernel_size=1, bias=False),
                                    self.bn1,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
@@ -440,9 +440,6 @@ class DGCNN_semseg(nn.Module):
         self.conv6_m = nn.Sequential(nn.Conv1d(64 * 2, args.emb_dims, kernel_size=1, bias=False),
                                      self.bn6,
                                      nn.LeakyReLU(negative_slope=0.2))
-        self.conv7 = nn.Sequential(nn.Conv1d(16, 64, kernel_size=1, bias=False),
-                                   self.bn7,
-                                   nn.LeakyReLU(negative_slope=0.2))
         self.conv8_m = nn.Sequential(nn.Conv1d(args.emb_dims, 256, kernel_size=1, bias=False),
                                      self.bn8,
                                      nn.LeakyReLU(negative_slope=0.2))
@@ -495,7 +492,7 @@ class DGCNN_semseg(nn.Module):
         x4 = self.conv6_m(node_feature_3)  # (batch_size, 64, num_points//64) -> (batch_size, emb_dims, num_points//64)
         # x = x4.max(dim=-1, keepdim=True)[0]              # (batch_size, emb_dims, num_points//64) -> (batch_size, emb_dims, 1)
 
-        x = self.conv8_m(x)  # (batch_size, 1024, num_points//64) -> (batch_size, 256, num_points//64)
+        x = self.conv8_m(x4)  # (batch_size, 1024, num_points//64) -> (batch_size, 256, num_points//64)
         x = self.dp1(x)
 
         x = x.repeat(1, 1, 4)

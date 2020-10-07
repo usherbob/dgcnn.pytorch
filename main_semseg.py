@@ -65,7 +65,7 @@ def train(args, io):
     print(str(model))
 
     if args.model_root is not None:
-        model.load_state_dict(torch.load(os.path.join(args.model_root, 'model_%s.t7' % args.test_area)), strict=False)
+        model.load_state_dict(torch.load(args.model_root), strict=False)
     model = nn.DataParallel(model)
     print("Let's use", torch.cuda.device_count(), "GPUs!")
 
