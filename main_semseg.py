@@ -223,7 +223,7 @@ def test(args, io):
                 raise Exception("Not implemented")
 
             model = nn.DataParallel(model)
-            model.load_state_dict(torch.load(os.path.join(args.model_root, 'model_%s.t7' % test_area)))
+            model.load_state_dict(torch.load(os.path.join(args.model_root, '/models/model_%s.t7' % test_area)))
             model = model.eval()
             test_acc = 0.0
             count = 0.0
@@ -247,16 +247,16 @@ def test(args, io):
                 test_pred_seg.append(pred_np)
                 if args.visu and batch_count % 5 == 0:
                     for i in range(data.shape[0]):
-                        np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (
+                        np.save('/root/ckpt/semseg/%s/visu/node0_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 data[i, :, :].detach().cpu().numpy())
-                        np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (
+                        np.save('/root/ckpt/semseg/%s/visu/node1_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node1[i, :, :].detach().cpu().numpy())
-                        np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (
+                        np.save('/root/ckpt/semseg/%s/visu/node2_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node2[i, :, :].detach().cpu().numpy())
-                        np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (
+                        np.save('/root/ckpt/semseg/%s/visu/node3_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node3[i, :, :].detach().cpu().numpy())
             test_true_cls = np.concatenate(test_true_cls)
