@@ -34,6 +34,8 @@ def _init_():
         os.makedirs(ckpt_dir+'/'+args.exp_name)
     if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'models'):
         os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'models')
+    if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'visu'):
+        os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'visu')
     os.system('cp main_partseg.py '+ckpt_dir+'/'+args.exp_name+'/'+'main.py.backup')
     os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
@@ -279,6 +281,17 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
+        if args.visu and count % 5 == 0:
+            for i in range(node0.shape[0]):
+                np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                        node0[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                        node1[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                        node2[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                        node3[i, :, :].detach().cpu().numpy())
+
     test_true_cls = np.concatenate(test_true_cls)
     test_pred_cls = np.concatenate(test_pred_cls)
     test_acc = metrics.accuracy_score(test_true_cls, test_pred_cls)
@@ -338,6 +351,8 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
     parser.add_argument('--model_path', type=str, default='', metavar='N',
                         help='Pretrained model path')
+    parser.add_argument('--visu', type=bool, default=False,
+                        help='visualize atp selection')
     args = parser.parse_args()
 
     _init_()
