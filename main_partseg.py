@@ -280,9 +280,9 @@ def test(args, io):
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
         if args.visu and batch_count % 5 == 0:
-            for i in range(node0.shape[0]):
+            for i in range(data.shape[0]):
                 np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        node0[i, :, :].detach().cpu().numpy())
+                        data[i, :, :].detach().cpu().numpy())
                 np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         node1[i, :, :].detach().cpu().numpy())
 
