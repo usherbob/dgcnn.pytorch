@@ -269,7 +269,7 @@ def test(args, io):
         label_one_hot = torch.from_numpy(label_one_hot.astype(np.float32))
         data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
         data = data.permute(0, 2, 1)
-        seg_pred, node0, node1 = model(data, label_one_hot)
+        seg_pred, node1 = model(data, label_one_hot)
         seg_pred = seg_pred.permute(0, 2, 1).contiguous()
         pred = seg_pred.max(dim=2)[1]
         seg_np = seg.cpu().numpy()
