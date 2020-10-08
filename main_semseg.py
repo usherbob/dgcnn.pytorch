@@ -99,7 +99,6 @@ def train(args, io):
         train_pred_cls = []
         train_true_seg = []
         train_pred_seg = []
-        train_label_seg = []
         for data, seg in train_loader:
             data, seg = data.to(device), seg.to(device)
             data = data.permute(0, 2, 1)
@@ -164,9 +163,9 @@ def train(args, io):
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred, node1, node2, node3 = model(data)
+                seg_pred, node1 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
-                loss = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
+                loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
                 loss_cd = compute_chamfer_distance(node1, data[:, :3, :])
                 loss = loss_cls + loss_cd
                 pred = seg_pred.max(dim=2)[1]
@@ -223,8 +222,6 @@ def test(args, io):
             model = nn.DataParallel(model)
             model.load_state_dict(torch.load(os.path.join(args.model_root, 'models/model_%s.t7' % test_area)))
             model = model.eval()
-            test_acc = 0.0
-            count = 0.0
             test_true_cls = []
             test_pred_cls = []
             test_true_seg = []
@@ -233,8 +230,7 @@ def test(args, io):
                 batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
-                batch_size = data.size()[0]
-                seg_pred, node1, node2, node3 = model(data)
+                seg_pred, node1 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 pred = seg_pred.max(dim=2)[1]
                 seg_np = seg.cpu().numpy()
@@ -251,12 +247,7 @@ def test(args, io):
                         np.save('/root/ckpt/semseg/%s/visu/node1_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node1[i, :, :].detach().cpu().numpy())
-                        np.save('/root/ckpt/semseg/%s/visu/node2_%04d.npy' % (
-                        args.exp_name, batch_count * args.test_batch_size + i),
-                                node2[i, :, :].detach().cpu().numpy())
-                        np.save('/root/ckpt/semseg/%s/visu/node3_%04d.npy' % (
-                        args.exp_name, batch_count * args.test_batch_size + i),
-                                node3[i, :, :].detach().cpu().numpy())
+
             test_true_cls = np.concatenate(test_true_cls)
             test_pred_cls = np.concatenate(test_pred_cls)
             test_acc = metrics.accuracy_score(test_true_cls, test_pred_cls)
