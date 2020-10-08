@@ -485,7 +485,7 @@ class DGCNN_semseg(nn.Module):
         batch_size = x.size(0)
         num_points = x.size(2)
 
-        xyz = x[:, -3:, :]                  # use normalized xyz
+        xyz = x[:, :3, :]                  # use normalized xyz
 
         x = get_graph_feature(x, k=self.k)  # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
         x = self.conv1(x)  # (batch_size, 3*2, num_points, k) -> (batch_size, 64, num_points, k)

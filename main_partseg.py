@@ -36,7 +36,7 @@ def _init_():
         os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'models')
     if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'visu'):
         os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'visu')
-    os.system('cp main_partseg.py '+ckpt_dir+'/'+args.exp_name+'/'+'main.py.backup')
+    os.system('cp main_partseg.py '+ckpt_dir+'/'+args.exp_name+'/'+'main_partseg.py.backup')
     os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
@@ -136,7 +136,7 @@ def train(args, io):
             loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
             loss_cd = compute_chamfer_distance(node1, node0) + compute_chamfer_distance(node2, node1) \
                       + compute_chamfer_distance(node3, node2)
-            loss = loss_cls + 0.01*loss_cd
+            loss = loss_cls + 0.3*loss_cd
             loss.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
@@ -204,7 +204,7 @@ def train(args, io):
                 loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
                 loss_cd = compute_chamfer_distance(node1, node0) + compute_chamfer_distance(node2,node1) \
                           + compute_chamfer_distance(node3, node2)
-                loss = loss_cls + 0.01*loss_cd
+                loss = loss_cls + 0.3*loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
