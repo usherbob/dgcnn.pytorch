@@ -137,6 +137,9 @@ def train(args, io):
             loss_cd = compute_chamfer_distance(node1, data) + 0.1 * compute_chamfer_distance(node2, data) \
                       + 0.01 * compute_chamfer_distance(node3, data)
             loss = loss_cls + 0.3 * loss_cd
+            # TODO: adjust loss params
+            # v1: 0.1*(1, 0.1, 0.01)
+            # v2: 1*(1, 0.1, 0.01)
             loss.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
