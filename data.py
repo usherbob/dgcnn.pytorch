@@ -71,8 +71,7 @@ def download_S3DIS():
 
 
 def load_data_cls(partition):
-    download_modelnet40()
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = '/root'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
     all_label = []

@@ -25,21 +25,24 @@ from data import ModelNet40
 from model import PointNet, DGCNN_cls
 import numpy as np
 from torch.utils.data import DataLoader
-from util import cal_loss, IOStream
+from util import cal_loss, compute_chamfer_distance, IOStream
 import sklearn.metrics as metrics
 
 
 def _init_():
-    if not os.path.exists('checkpoints'):
-        os.makedirs('checkpoints')
-    if not os.path.exists('checkpoints/'+args.exp_name):
-        os.makedirs('checkpoints/'+args.exp_name)
-    if not os.path.exists('checkpoints/'+args.exp_name+'/'+'models'):
-        os.makedirs('checkpoints/'+args.exp_name+'/'+'models')
-    os.system('cp main_cls.py checkpoints'+'/'+args.exp_name+'/'+'main_cls.py.backup')
-    os.system('cp model.py checkpoints' + '/' + args.exp_name + '/' + 'model.py.backup')
-    os.system('cp util.py checkpoints' + '/' + args.exp_name + '/' + 'util.py.backup')
-    os.system('cp data.py checkpoints' + '/' + args.exp_name + '/' + 'data.py.backup')
+    ckpt_dir = '/root/ckpt/cls'
+    if not os.path.exists(ckpt_dir):
+        os.makedirs(ckpt_dir)
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name):
+        os.makedirs(ckpt_dir + '/' + args.exp_name)
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'models'):
+        os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'models')
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'visu'):
+        os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'visu')
+    os.system('cp main_cls.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'main_cls.py.backup')
+    os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
+    os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
+    os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
     train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points), num_workers=8,
@@ -82,6 +85,8 @@ def train(args, io):
         # Train
         ####################
         train_loss = 0.0
+        train_cd_loss = 0.0
+        train_cls_loss = 0.0
         count = 0.0
         model.train()
         train_pred = []
@@ -91,13 +96,17 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits = model(data)
-            loss = criterion(logits, label)
+            node, logits = model(data)
+            loss_cls = criterion(logits, label)
+            loss_cd = compute_chamfer_distance(node, data)
+            loss =  loss_cls + loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
             count += batch_size
             train_loss += loss.item() * batch_size
+            train_cls_loss += loss_cls.item() * batch_size
+            train_cd_loss += loss_cd.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
         if args.scheduler == 'cos':
@@ -111,18 +120,23 @@ def train(args, io):
 
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
-        outstr = 'Train %d, loss: %.6f, train acc: %.6f, train avg acc: %.6f' % (epoch,
-                                                                                 train_loss*1.0/count,
-                                                                                 metrics.accuracy_score(
-                                                                                     train_true, train_pred),
-                                                                                 metrics.balanced_accuracy_score(
-                                                                                     train_true, train_pred))
+        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, train acc: %.6f, train avg acc: %.6f' \
+                                                                                 % (epoch,
+                                                                                    train_loss * 1.0 / count,
+                                                                                    train_cls_loss * 1.0 / count,
+                                                                                    train_cd_loss * 1.0 / count,
+                                                                                    metrics.accuracy_score(
+                                                                                        train_true, train_pred),
+                                                                                    metrics.balanced_accuracy_score(
+                                                                                        train_true, train_pred))
         io.cprint(outstr)
 
         ####################
         # Test
         ####################
         test_loss = 0.0
+        test_cd_loss = 0.0
+        test_cls_loss = 0.0
         count = 0.0
         model.eval()
         test_pred = []
@@ -131,21 +145,28 @@ def train(args, io):
             data, label = data.to(device), label.to(device).squeeze()
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
-            logits = model(data)
-            loss = criterion(logits, label)
+            node, logits = model(data)
+            loss_cls = criterion(logits, label)
+            loss_cd = compute_chamfer_distance(node, data)
+            loss = loss_cls + loss_cd
             preds = logits.max(dim=1)[1]
             count += batch_size
             test_loss += loss.item() * batch_size
+            test_cls_loss += loss_cls.item() * batch_size
+            test_cd_loss += loss_cd.item() * batch_size
             test_true.append(label.cpu().numpy())
             test_pred.append(preds.detach().cpu().numpy())
         test_true = np.concatenate(test_true)
         test_pred = np.concatenate(test_pred)
         test_acc = metrics.accuracy_score(test_true, test_pred)
         avg_per_class_acc = metrics.balanced_accuracy_score(test_true, test_pred)
-        outstr = 'Test %d, loss: %.6f, test acc: %.6f, test avg acc: %.6f' % (epoch,
-                                                                              test_loss*1.0/count,
-                                                                              test_acc,
-                                                                              avg_per_class_acc)
+        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, test acc: %.6f, test avg acc: %.6f' \
+                                                                             % (epoch,
+                                                                                test_loss * 1.0 / count,
+                                                                                test_cls_loss * 1.0 / count,
+                                                                                test_cd_loss * 1.0 / count,
+                                                                                test_acc,
+                                                                                avg_per_class_acc)
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
@@ -169,19 +190,21 @@ def test(args, io):
     model = nn.DataParallel(model)
     model.load_state_dict(torch.load(args.model_path))
     model = model.eval()
-    test_acc = 0.0
-    count = 0.0
     test_true = []
     test_pred = []
+    count = 0
     for data, label in test_loader:
-
+        count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
-        batch_size = data.size()[0]
-        logits = model(data)
+        node, logits = model(data)
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
+        if args.visu and count % 5 == 0:
+            for i in range(node.shape[0]):
+                np.save('/root/ckpt/cls/%s/visu/node_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/cls/%s/visu/data_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
@@ -231,6 +254,8 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
     parser.add_argument('--model_path', type=str, default='', metavar='N',
                         help='Pretrained model path')
+    parser.add_argument('--visu', type=bool, default=False,
+                        help='visualize atp by saving nodes')
     args = parser.parse_args()
 
     _init_()
