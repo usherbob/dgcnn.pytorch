@@ -170,7 +170,7 @@ def train(args, io):
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), '/root/ckpt/cls/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream('checkpoints/' + args.exp_name + '/run.log')
+    io = IOStream('/root/ckpt/cls/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
