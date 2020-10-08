@@ -86,7 +86,7 @@ def train(args, io):
         raise Exception("Not implemented")
     print(str(model))
 
-    if args.model_path:
+    if args.model_path != '':
         ckpt = torch.load(args.model_path)
         model.load_state_dict(ckpt, strict=False)
     model = nn.DataParallel(model)
