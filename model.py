@@ -495,7 +495,7 @@ class DGCNN_semseg(nn.Module):
         node1, node_feature_1 = self.pool1(xyz, x1)  # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
 
         x = get_graph_feature(node_feature_1,
-                              k=self.k)  # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k)
+                              k=self.k//2)  # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k)
         x = self.conv3(x)  # (batch_size, 64*2, num_points//4, k) -> (batch_size, 64, num_points//4, k)
         x = self.conv4(x)  # (batch_size, 64, num_points//4, k) -> (batch_size, 64, num_points//4, k)
         x2 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//4, k) -> (batch_size, 64, num_points//4)
@@ -503,7 +503,7 @@ class DGCNN_semseg(nn.Module):
         node2, node_feature_2 = self.pool2(node1, x2)  # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//16) 128
 
         x = get_graph_feature(node_feature_2,
-                              k=self.k)  # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k)
+                              k=self.k//4)  # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k)
         x = self.conv5(x)  # (batch_size, 64*2, num_points//16, k) -> (batch_size, 64, num_points//16, k)
         x3 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//16, k) -> (batch_size, 64, num_points//16)
 
@@ -516,17 +516,17 @@ class DGCNN_semseg(nn.Module):
         x = self.conv8_m(x4)  # (batch_size, 1024, num_points//64) -> (batch_size, 256, num_points//64)
         x = self.dp1(x)
 
-        x = x.repeat(1, 1, 4)
+        x = unpool(node3, node2, x)
         x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//16)
         x = self.conv9_m(x)  # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
         x = self.dp2(x)
 
-        x = x.repeat(1, 1, 4)
+        x = unpool(node2, node1, x)
         x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points//4)
         x = self.conv10_m(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 128, num_points//4)
         x = self.dp3(x)
 
-        x = x.repeat(1, 1, 4)
+        x = unpool(node1, xyz, x)
         x = torch.cat((x, x1), dim=1)  # (batch_size, 128+64, num_points)
         x = self.conv11_m(x)  # (batch_size, 128+64, num_points) -> (batch_size, seg_num_all, num_points)
 
