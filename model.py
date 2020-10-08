@@ -386,7 +386,7 @@ class DGCNN_partseg(nn.Module):
         x = self.conv4(x)                                  # (batch_size, 64, num_points//4, k) -> (batch_size, 64, num_points//4, k)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k) -> (batch_size, 64, num_points//4)
 
-        node2, node_feature_2 = self.pool2(xyz, x2)      # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//16) 128
+        node2, node_feature_2 = self.pool1(xyz, x2)      # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//16) 128
 
         x = get_graph_feature(node_feature_2, k=self.k)    # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k)
         x = self.conv5(x)                                  # (batch_size, 64*2, num_points//16, k) -> (batch_size, 64, num_points//16, k)
