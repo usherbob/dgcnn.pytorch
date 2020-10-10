@@ -134,12 +134,18 @@ def train(args, io):
             seg_pred, node1, node2, node3 = model(data, label_one_hot)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data) + 0.1 * compute_chamfer_distance(node2, data) \
-                      + 0.01 * compute_chamfer_distance(node3, data)
-            loss = loss_cls + 0.3 * loss_cd
+            loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, data) \
+                      + compute_chamfer_distance(node3, data)
+            loss = 0.01 * (loss_cls + loss_cd)
             # TODO: adjust loss params
             # v1: 0.1*(1, 0.1, 0.01)
             # v2: 1*(1, 0.1, 0.01)
+            # v3: 1e-4*(1, 1, 1)
+            # v4: 1e-3*(1, 1, 1)
+            # v5: 1e-2*(1, 1, 1)
+            # v6: 0.1*(10, 1, 0.1)
+            # v7: 0.3*(1, 1, 1)
+            # v8: 0.01 * (cls, 1, 1, 1)
             loss.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
@@ -205,8 +211,8 @@ def train(args, io):
                 seg_pred, node1, node2, node3 = model(data, label_one_hot)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data) + 0.1 * compute_chamfer_distance(node2, data) \
-                          + 0.01 * compute_chamfer_distance(node3, data)
+                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, data) \
+                          + compute_chamfer_distance(node3, data)
                 loss = loss_cls + loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
