@@ -124,9 +124,9 @@ class DGCNN_cls(nn.Module):
         x2 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
         # pool
-        x_t1 = torch.cat((x1, x2), dim=1)
-        x_t1 = self.conv2_m(x_t1)
-        node1, node_features_1, _ = self.pool1(xyz, x_t1)
+        x_t1_ = torch.cat((x1, x2), dim=1)
+        x_t1 = self.conv2_m(x_t1_)
+        node1, node_features_1, _ = self.pool1(xyz, x_t1_)
 
         x = get_graph_feature(node_features_1, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv3(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
@@ -137,9 +137,9 @@ class DGCNN_cls(nn.Module):
         x4 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 256, num_points, k) -> (batch_size, 256, num_points)
 
         # pool
-        x_t2 = torch.cat((x3, x4), dim=1)
-        x_t2 = self.conv4_m(x_t2)
-        node2, node_features_2, _ = self.pool2(node1, x_t2)
+        x_t2_ = torch.cat((x3, x4), dim=1)
+        x_t2 = self.conv4_m(x_t2_)
+        node2, node_features_2, _ = self.pool2(node1, x_t2_)
 
         x = get_graph_feature(node_features_2, k=self.k // 4)
         x = self.conv5(x)
