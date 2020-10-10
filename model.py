@@ -126,7 +126,7 @@ class DGCNN_cls(nn.Module):
         # pool
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, _ = self.pool1(xyz, x_t1_)
+        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
 
         x = get_graph_feature(node_features_1, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv3(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
@@ -157,7 +157,7 @@ class DGCNN_cls(nn.Module):
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
         
-        return x, node1, node2
+        return x, node1, node1_static, node2
 
 
 class Transform_Net(nn.Module):
