@@ -73,8 +73,8 @@ class DGCNN_cls(nn.Module):
         self.bn2_m = nn.BatchNorm1d(args.emb_dims)
         self.bn3 = nn.BatchNorm2d(128)
         self.bn4 = nn.BatchNorm2d(128)
-        self.bn4_m = nn.BatchNorm2d(args.emb_dims)
-        self.bn5 = nn.BatchNorm1d(256)
+        self.bn4_m = nn.BatchNorm1d(args.emb_dims)
+        self.bn5 = nn.BatchNorm2d(256)
         self.bn5_m = nn.BatchNorm1d(args.emb_dims)
 
         self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
