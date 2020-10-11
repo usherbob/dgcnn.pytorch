@@ -101,8 +101,8 @@ class DGCNN_cls(nn.Module):
         self.conv5_m = nn.Sequential(nn.Conv1d(256, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5_m,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = Pool(256, 128, 0.2)
-        self.pool2 = Pool(64, 256, 0.2)
+        self.pool1 = Pool(args.num_points//4, 128, 0.2)
+        self.pool2 = Pool(args.num_points//16, 256, 0.2)
         self.linear1 = nn.Linear(args.emb_dims*3, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
