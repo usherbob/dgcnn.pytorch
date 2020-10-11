@@ -203,7 +203,7 @@ def test(args, io):
         test_pred.append(preds.detach().cpu().numpy())
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
-                np.save('/root/ckpt/cls/%s/visu/data_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/cls/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
                 np.save('/root/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
                 np.save('/root/ckpt/cls/%s/visu/node2_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node2[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)

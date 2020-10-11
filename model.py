@@ -383,22 +383,22 @@ class DGCNN_partseg(nn.Module):
         x = self.conv2(x)                                  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
         x1 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
-        # node1, node_feature_1, node1_static = self.pool1(xyz, x1)        # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
+        node1, node_feature_1, node1_static = self.pool1(xyz, x1)        # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
 
-        x = get_graph_feature(x1, k=self.k) # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = get_graph_feature(node_feature_1, k=self.k//2) # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv3(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x = self.conv4(x)                                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
-        node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//16) 128
+        node2, node_feature_2, node2_static = self.pool2(node1_static, x2)      # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//16) 128
 
-        x = get_graph_feature(node_feature_1, k=self.k//2) # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k//4)
+        x = get_graph_feature(node_feature_2, k=self.k//4) # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k//4)
         x = self.conv5(x)                                  # (batch_size, 64*2, num_points//16, k//4) -> (batch_size, 64, num_points//16, k//4)
         x3 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//16, k//4) -> (batch_size, 64, num_points//16)
 
-        # node3, node_feature_3, node3_static = self.pool3(node2_static, x3)      # (batch_size, 64, num_points//16) -> (batch_size, 64, num_points//64) 32
+        node3, node_feature_3, node3_static = self.pool3(node2_static, x3)      # (batch_size, 64, num_points//16) -> (batch_size, 64, num_points//64) 32
 
-        x = get_graph_feature(x3, k=self.k//2)  # (batch_size, 64, num_points//64) -> (batch_size, 64*2, num_points//64, k//8)
+        x = get_graph_feature(node_feature_3, k=self.k//8)  # (batch_size, 64, num_points//64) -> (batch_size, 64*2, num_points//64, k//8)
         x = self.conv6(x)                                   # (batch_size, 64*2, num_points//64, k//8) -> (batch_size, 64, num_points//64, k//8)
         x4 = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 64, num_points//64, k//8) -> (batch_size, 64, num_points//64)
 
@@ -419,22 +419,22 @@ class DGCNN_partseg(nn.Module):
         x = torch.cat((x, x4), dim=1)                       # (batch_size, 256+64, num_points//64)
         x = self.conv9(x)                                   # (batch_size, 256+64, num_points//64) -> (batch_size, 256, num_points//64)
 
-        # x = unpool(node3_static, node2_static, x)
+        x = unpool(node3_static, node2_static, x)
         x = torch.cat((x, x3), dim=1)                       # (batch_size, 256+64, num_points//16)
         x = self.conv10(x)                                  # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
 
-        x = unpool(node1_static, xyz, x)
+        x = unpool(node2_static, node1_static, x)
         x = torch.cat((x, x2), dim=1)                       # (batch_size, 256+64, num_points//4)
         x = self.conv11(x)                                  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        # x = unpool(node1_static, xyz, x)
+        x = unpool(node1_static, xyz, x)
         x = torch.cat((x, x1), dim=1)                       # (batch_size, 256+64, num_points)
         x = self.conv12(x)                                  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
         x = self.dp(x)
 
         x = self.conv13(x)                                  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
         
-        return x, node1
+        return x, node1, node2, node3, node1_static, node2_static
 
 
 class DGCNN_semseg(nn.Module):

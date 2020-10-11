@@ -131,11 +131,12 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            seg_pred, node1 = model(data, label_one_hot)
+            seg_pred, node1, node2, node3, node1_static, node2_static = model(data, label_one_hot)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_cd
+            loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
+                      + compute_chamfer_distance(node3, node2_static)
+            loss = loss_cls + 0.3 * loss_cd
             # TODO: adjust loss params
             # v1: 0.1*(1, 0.1, 0.01)
             # v2: 1*(1, 0.1, 0.01)
@@ -208,11 +209,12 @@ def train(args, io):
                 data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred, node1 = model(data, label_one_hot)
+                seg_pred, node1, node2, node3, node1_static, node2_static = model(data, label_one_hot)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_cd
+                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
+                          + compute_chamfer_distance(node3, node2_static)
+                loss = loss_cls + 0.3 * loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -278,7 +280,7 @@ def test(args, io):
         label_one_hot = torch.from_numpy(label_one_hot.astype(np.float32))
         data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
         data = data.permute(0, 2, 1)
-        seg_pred, node1 = model(data, label_one_hot)
+        seg_pred, node1, node2, node3, node1_static, node2_static = model(data, label_one_hot)
         seg_pred = seg_pred.permute(0, 2, 1).contiguous()
         pred = seg_pred.max(dim=2)[1]
         seg_np = seg.cpu().numpy()
@@ -293,7 +295,11 @@ def test(args, io):
                 np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         data[i, :, :].detach().cpu().numpy())
                 np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        node1[i, :, :].detach().cpu().numpy())
+                        node1_static[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+                        node2_static[i, :, :].detach().cpu().numpy())
+                np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+                        node3[i, :, :].detach().cpu().numpy())
 
     test_true_cls = np.concatenate(test_true_cls)
     test_pred_cls = np.concatenate(test_pred_cls)
