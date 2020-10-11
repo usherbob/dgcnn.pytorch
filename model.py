@@ -139,7 +139,7 @@ class DGCNN_cls(nn.Module):
         # pool
         x_t2_ = torch.cat((x3, x4), dim=1)
         x_t2 = self.conv4_m(x_t2_)
-        node2, node_features_2, _ = self.pool2(node1, x_t2_)
+        node2, node_features_2, _ = self.pool2(node1_static, x_t2_)
 
         x = get_graph_feature(node_features_2, k=self.k // 4)
         x = self.conv5(x)
