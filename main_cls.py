@@ -99,7 +99,7 @@ def train(args, io):
             logits, node1, node1_static, node2 = model(data)
             loss_cls = criterion(logits, label)
             loss_cd = compute_chamfer_distance(node1, data) + 5 * compute_chamfer_distance(node2, node1_static)
-            loss = loss_cls + 0.2 * loss_cd
+            loss = 10 * loss_cls + loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -149,7 +149,7 @@ def train(args, io):
                 logits, node1, node1_static, node2 = model(data)
                 loss_cls = criterion(logits, label)
                 loss_cd = compute_chamfer_distance(node1, data) + 5 * compute_chamfer_distance(node2, node1_static)
-                loss = loss_cls + 0.2 * loss_cd
+                loss = 10 * loss_cls + loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
