@@ -141,21 +141,22 @@ def train(args, io):
         model.eval()
         test_pred = []
         test_true = []
-        for data, label in test_loader:
-            data, label = data.to(device), label.to(device).squeeze()
-            data = data.permute(0, 2, 1)
-            batch_size = data.size()[0]
-            logits, node1, node1_static, node2 = model(data)
-            loss_cls = criterion(logits, label)
-            loss_cd = compute_chamfer_distance(node1, data) + 5 * compute_chamfer_distance(node2, node1_static)
-            loss = loss_cls + 0.2 * loss_cd
-            preds = logits.max(dim=1)[1]
-            count += batch_size
-            test_loss += loss.item() * batch_size
-            test_cls_loss += loss_cls.item() * batch_size
-            test_cd_loss += loss_cd.item() * batch_size
-            test_true.append(label.cpu().numpy())
-            test_pred.append(preds.detach().cpu().numpy())
+        with torch.no_grad():
+            for data, label in test_loader:
+                data, label = data.to(device), label.to(device).squeeze()
+                data = data.permute(0, 2, 1)
+                batch_size = data.size()[0]
+                logits, node1, node1_static, node2 = model(data)
+                loss_cls = criterion(logits, label)
+                loss_cd = compute_chamfer_distance(node1, data) + 5 * compute_chamfer_distance(node2, node1_static)
+                loss = loss_cls + 0.2 * loss_cd
+                preds = logits.max(dim=1)[1]
+                count += batch_size
+                test_loss += loss.item() * batch_size
+                test_cls_loss += loss_cls.item() * batch_size
+                test_cd_loss += loss_cd.item() * batch_size
+                test_true.append(label.cpu().numpy())
+                test_pred.append(preds.detach().cpu().numpy())
         test_true = np.concatenate(test_true)
         test_pred = np.concatenate(test_pred)
         test_acc = metrics.accuracy_score(test_true, test_pred)
