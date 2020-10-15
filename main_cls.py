@@ -96,10 +96,10 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, node1, node1_static, node2 = model(data)
+            logits, node1, node1_static = model(data)
             loss_cls = criterion(logits, label)
-            loss_cd = compute_chamfer_distance(node1, data) + 5 * compute_chamfer_distance(node2, node1_static)
-            loss = 10 * loss_cls + loss_cd
+            loss_cd = compute_chamfer_distance(node1, data)
+            loss = loss_cls + loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -146,10 +146,10 @@ def train(args, io):
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits, node1, node1_static, node2 = model(data)
+                logits, node1, node1_static = model(data)
                 loss_cls = criterion(logits, label)
-                loss_cd = compute_chamfer_distance(node1, data) + 5 * compute_chamfer_distance(node2, node1_static)
-                loss = 10 * loss_cls + loss_cd
+                loss_cd = compute_chamfer_distance(node1, data)
+                loss = loss_cls + loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -198,7 +198,7 @@ def test(args, io):
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
-        logits, node1, node1_static, node2 = model(data)
+        logits, node1, node1_static = model(data)
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
@@ -206,7 +206,6 @@ def test(args, io):
             for i in range(data.shape[0]):
                 np.save('/opt/data/private/bob/ckpt/cls/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
                 np.save('/opt/data/private/bob/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/bob/ckpt/cls/%s/visu/node2_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node2[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
