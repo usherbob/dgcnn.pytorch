@@ -108,7 +108,7 @@ class DGCNN_cls(nn.Module):
                                      self.bn6_m,
                                      nn.LeakyReLU(negative_slope=0.2))
         self.pool1 = Pool(args.num_points//4, 128, 0.2)
-        self.pool2 = Pool(args.num_points//16, 128, 0.2)
+        self.pool2 = Pool(args.num_points//16, 512, 0.2)
         self.linear1 = nn.Linear(args.emb_dims*3, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
