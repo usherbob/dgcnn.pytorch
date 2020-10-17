@@ -71,9 +71,14 @@ class DGCNN_cls(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.bn2 = nn.BatchNorm2d(64)
         self.bn2_m = nn.BatchNorm1d(args.emb_dims)
+
         self.bn3 = nn.BatchNorm2d(256)
         self.bn4 = nn.BatchNorm2d(256)
-        self.bn5 = nn.BatchNorm1d(args.emb_dims)
+        self.bn4_m = nn.BatchNorm1d(args.emb_dims)
+
+        self.bn5 = nn.BatchNorm2d(1024)
+        self.bn6 = nn.BatchNorm2d(1024)
+        self.bn6_m = nn.BatchNorm1d(args.emb_dims)
 
         self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
                                    self.bn1,
@@ -81,7 +86,7 @@ class DGCNN_cls(nn.Module):
         self.conv2 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn2,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv2_m = nn.Sequential(nn.Conv1d(64 * 2, args.emb_dims, kernel_size=1, bias=False),
+        self.conv2_m = nn.Sequential(nn.Conv1d(64*2, args.emb_dims, kernel_size=1, bias=False),
                                      self.bn2_m,
                                      nn.LeakyReLU(negative_slope=0.2))
         self.conv3 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
@@ -90,11 +95,21 @@ class DGCNN_cls(nn.Module):
         self.conv4 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
                                    self.bn4,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
+        self.conv4_m = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
+                                     self.bn4_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
+        self.conv5 = nn.Sequential(nn.Conv2d(1024*2, 1024, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
+        self.conv6 = nn.Sequential(nn.Conv2d(1024*2, 1024, kernel_size=1, bias=False),
+                                   self.bn6,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv6_m = nn.Sequential(nn.Conv1d(1024*2, args.emb_dims, kernel_size=1, bias=False),
+                                     self.bn6_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.pool1 = Pool(args.num_points//4, 128, 0.2)
-        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
+        self.pool2 = Pool(args.num_points//16, 128, 0.2)
+        self.linear1 = nn.Linear(args.emb_dims*3, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
         self.linear2 = nn.Linear(512, 256)
@@ -129,12 +144,28 @@ class DGCNN_cls(nn.Module):
         x = self.conv4(x)                       # (batch_size, 128*2, num_points, k) -> (batch_size, 256, num_points, k)
         x4 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 256, num_points, k) -> (batch_size, 256, num_points)
 
-        x = torch.cat([x3, x4], dim=1)
-        x_t2 = self.conv5(x)
+        # pool(sample and aggregate)
+        x_t2_ = torch.cat((x3, x4), dim=1)
+        x_t2 = self.conv4_m(x_t2_)
+        node2, node_features_2, node2_static = self.pool2(xyz, x_t2_)
+        node_features_agg = aggregate(node2_static, node2, x_t2_, self.k)
+        x = torch.cat((node_features_2, node_features_agg), dim=1)
+
+        x = get_graph_feature(x, k=self.k // 4)  # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
+        x = self.conv5(x)  # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
+        x5 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 128, num_points, k) -> (batch_size, 128, num_points)
+
+        x = get_graph_feature(x5, k=self.k // 4)  # (batch_size, 128, num_points) -> (batch_size, 128*2, num_points, k)
+        x = self.conv6(x)  # (batch_size, 128*2, num_points, k) -> (batch_size, 256, num_points, k)
+        x6 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 256, num_points, k) -> (batch_size, 256, num_points)
+
+        x = torch.cat([x5, x6], dim=1)
+        x_t3 = self.conv6_m(x)
 
         x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
         x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x = torch.cat((x1, x2), 1)              # (batch_size, emb_dims*3)
+        x3 = F.adaptive_max_pool1d(x_t3, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+        x = torch.cat((x1, x2, x3), 1)              # (batch_size, emb_dims*3)
 
         x = F.leaky_relu(self.bn6(self.linear1(x)), negative_slope=0.2) # (batch_size, emb_dims*2) -> (batch_size, 512)
         x = self.dp1(x)
@@ -142,7 +173,7 @@ class DGCNN_cls(nn.Module):
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
         
-        return x, node1, node1_static
+        return x, node1, node1_static, node2, node2_static
 
 
 class Transform_Net(nn.Module):
