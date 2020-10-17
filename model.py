@@ -148,7 +148,7 @@ class DGCNN_cls(nn.Module):
         x_t2_ = torch.cat((x3, x4), dim=1)
         x_t2 = self.conv4_m(x_t2_)
         node2, node_features_2, node2_static = self.pool2(node1_static, x_t2_)
-        node_features_agg = aggregate(node2_static, node2, x_t2_, self.k)
+        node_features_agg = aggregate(node2_static, node2, x_t2_, self.k//2)
         x = torch.cat((node_features_2, node_features_agg), dim=1)
 
         x = get_graph_feature(x, k=self.k // 4)  # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
