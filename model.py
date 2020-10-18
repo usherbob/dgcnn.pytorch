@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
+from pointnet2_ops_lib.pointnet2_ops import pointnet2_utils
 
 
 def knn(x, k):
@@ -93,7 +94,7 @@ class DGCNN_cls(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = Pool(args.num_points//4, 128, 0.2)
+        self.pool1 = Pool_FPS(args.num_points//4, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -117,7 +118,7 @@ class DGCNN_cls(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+        node1, node_features_1 = self.pool1(xyz, x_t1_)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -142,7 +143,7 @@ class DGCNN_cls(nn.Module):
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
         
-        return x, node1, node1_static
+        return x, node1
 
 
 class Transform_Net(nn.Module):
@@ -192,40 +193,29 @@ class Transform_Net(nn.Module):
 
         return x
 
-class Pool(nn.Module):
+class Pool_FPS(nn.Module):
     def __init__(self, k, in_dim, p):
         '''
         k: num of kpoints
         in_dim: feature channels
         p: dropout rate
         '''
-        super(Pool, self).__init__()
+        super(Pool_FPS, self).__init__()
         self.k = k
-        self.sigmoid = nn.Sigmoid()
-        # principal component
-        self.proj = nn.Conv1d(in_dim, in_dim, 1) # single_head 8
-        self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
     def forward(self, xyz, feature):
-        Z = self.drop(feature)
-        # adaptive modeling of downsampling
-        vector = torch.max(self.proj(Z).squeeze(), dim=-1, keepdim=True)[0] # bs, C, 1
-        weights = torch.sum(feature * vector, dim=1) # bs, C, n
-        scores = self.sigmoid(weights) # batchsize, 8, n
-        values, idx = torch.topk(scores, self.k, dim=-1) # bs, 8, k//8
-
+        """
+        xyz: B, 3, N
+        feature: B, C, N
+        """
+        idx = pointnet2_utils.furthest_point_sample(xyz.permute(0, 2, 1), self.k)
         xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
         xyz_idx = xyz_idx.permute(0, 2, 1)
         node_static = xyz.gather(2, xyz_idx)  # Bx3xnpoint
         feature_idx = idx.unsqueeze(2).repeat(1, 1, feature.shape[1])
         feature_idx = feature_idx.permute(0, 2, 1)
         node_feature = feature.gather(2, feature_idx)  # Bx3xnpoint
-        ## especially important
-        values = torch.unsqueeze(values, 1)
-        assert values.shape == (feature.shape[0], 1, self.k), "values shape error"
-        node_feature = torch.mul(node_feature, values)
-        node = torch.mul(node_static, values)
-        return node, node_feature, node_static
+        return node_static, node_feature
 
 
 def unpool(xyz, unknown_xyz, features):
