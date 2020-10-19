@@ -87,6 +87,14 @@ def load_data_cls(partition):
     return all_data, all_label
 
 
+def load_data_scan(h5_filename):
+    f = h5py.File(h5_filename)
+    data = f['data'][:]
+    label = f['label'][:]
+    mask = f['mask'][:]
+    return data, label, mask
+
+
 def load_data_partseg(partition):
     # download_shapenetpart()
     BASE_DIR = '/opt/data/private'
@@ -198,6 +206,38 @@ class ModelNet40(Dataset):
 
     def __len__(self):
         return self.data.shape[0]
+
+
+class ScanObject(Dataset):
+    def __init__(self, h5_filename, num_points, enable_mask=True):
+        self.name = h5_filename
+        self.num_points = num_points
+        self.data, self.label, self.mask = load_data_scan(h5_filename)
+        self.enable_mask = enable_mask
+
+    def convert_to_binary_mask(self, mask):
+        binary_mask = np.ones(mask.shape)
+        bg_idx = np.where(mask == -1)
+        binary_mask[bg_idx] = 0
+        return binary_mask
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, item):
+        points = self.data[item][:self.num_points]
+        label = self.label[item]
+        mask = self.mask[item][:self.num_points]
+        mask = self.convert_to_binary_mask(mask)
+        if 'train' in self.name:
+            points = translate_pointcloud(points)
+        points = torch.from_numpy(points.transpose().astype(np.float32))
+        mask = torch.from_numpy(mask.transpose().astype(np.float32))
+        if not self.enable_mask:
+            np.random.shuffle(points)
+            return points, label
+        else:
+            return points, label, mask
 
 
 class ShapeNetPart(Dataset):
