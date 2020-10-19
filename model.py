@@ -181,7 +181,7 @@ class DGCNN_scan(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256 * 2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv6 = nn.Sequential(nn.Conv1d(args.emb_dims + 256, 128, kernel_size=1, bias=False),
+        self.conv6 = nn.Sequential(nn.Conv1d(2*args.emb_dims + 256, 128, kernel_size=1, bias=False),
                                    self.bn6,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv7 = nn.Sequential(nn.Conv1d(128 + 256, 128, kernel_size=1, bias=False),
@@ -237,7 +237,7 @@ class DGCNN_scan(nn.Module):
 
         x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
         x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        vector = torch.cat((x1, x2), 1)  # (batch_size, emb_dims*3)
+        vector = torch.cat((x1, x2), 1)  # (batch_size, emb_dims*2)
 
         ## classification
         x = F.leaky_relu(self.bn6(self.linear1(vector)), negative_slope=0.2)  # (batch_size, emb_dims*2) -> (batch_size, 512)
@@ -247,7 +247,7 @@ class DGCNN_scan(nn.Module):
         logits_cls = self.linear3(x)  # (batch_size, 256) -> (batch_size, output_channels)
 
         ## segmentation
-        x = vector.repeat(1, 1, x4.shape[-1])  # (batch_size, 64, num_points//4)
+        x = vector.unsqueeze(-1).repeat(1, 1, x4.shape[-1])  # (batch_size, 64, num_points//4)
         x = torch.cat((x, x4), dim=1)  # (batch_size, 256+64, num_points//4)
         x = self.conv6(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
