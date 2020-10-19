@@ -112,15 +112,17 @@ def train(args, io):
         train_pred = []
         train_true = []
         for data, label, seg in train_loader:
+            label = label.type(torch.LongTensor)
+            seg = seg.type(torch.LongTensor)
             data, label, seg = data.to(device), label.to(device), seg.to(device)
             # data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
             logits_cls, logits_seg, node1, node1_static = model(data)
-            print('dtype of label:{}'.format(label.dtype))
-            print('dtype of logits_cls:{}'.format(logits_cls.dtype))
             loss_cls = criterion(logits_cls, label)
-            loss_seg = softmax_segmenter(logits_seg, seg)
+            logits_seg = logits_seg.permute(0, 2, 1).contiguous()
+            loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
+            # loss_seg = softmax_segmenter(logits_seg, seg)
             loss_cd = compute_chamfer_distance(node1, data)
             loss = loss_cls + loss_seg + loss_cd
             loss.backward()
@@ -169,12 +171,16 @@ def train(args, io):
         test_true = []
         with torch.no_grad():
             for data, label, seg in test_loader:
+                label = label.type(torch.LongTensor)
+                seg = seg.type(torch.LongTensor)
                 data, label, seg = data.to(device), label.to(device), seg.to(device)
                 # data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
                 logits_cls, logits_seg, node1, node1_static = model(data)
                 loss_cls = criterion(logits_cls, label)
-                loss_seg = softmax_segmenter(logits_seg, seg)
+                logits_seg = logits_seg.permute(0, 2, 1).contiguous()
+                loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
+                # loss_seg = softmax_segmenter(logits_seg, seg)
                 loss_cd = compute_chamfer_distance(node1, data)
                 loss = loss_cls + loss_seg + loss_cd
                 preds = logits_cls.max(dim=1)[1]
