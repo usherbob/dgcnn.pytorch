@@ -229,7 +229,7 @@ def test(args, io):
     test_true = []
     test_pred = []
     count = 0
-    for data, label in test_loader:
+    for data, label, seg in test_loader:
         count += 1
         data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
         data = data.permute(0, 2, 1)
