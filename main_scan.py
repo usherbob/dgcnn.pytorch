@@ -61,10 +61,10 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/training_objectdataset.h5', num_points=args.num_points), num_workers=8,
+    train_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/test_objectdataset.h5', num_points=args.num_points), num_workers=8,
-                             batch_size=args.test_batch_size, shuffle=True, drop_last=False)
+    test_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/{}'.format(args.file_name.replace('training', 'test')),
+                                        num_points=args.num_points), num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -210,7 +210,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/test_objectdataset.h5',
+    test_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/{}'.format(args.file_name.replace('training', 'test')),
                                         num_points=args.num_points), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -292,12 +292,20 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
+    parser.add_argument('--file_name', type=str, default='bg', metavar='N',
+                        choices=['bg', 't25', 't25r', 't50r', 'rs75'],
+                        help='file name for scan object dataset')
     args = parser.parse_args()
 
     _init_()
 
     io = IOStream('/opt/data/private/ckpt/scan/' + args.exp_name + '/run.log')
     io.cprint(str(args))
+
+    name_lut = {'bg': 'training_objectdataset.h5', 't25': 'training_objectdataset_augmented25_norot.h5',
+                't25r': 'training_objectdataset_augmented25rot.h5', 't50r': 'training_objectdataset_augmentedrot.h5',
+                'rs75': 'training_objectdataset_augmentedrot_scale75.h5'}
+    args.file_name = name_lut[args.file_name]
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     torch.manual_seed(args.seed)
