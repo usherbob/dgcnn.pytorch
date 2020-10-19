@@ -232,7 +232,7 @@ def test(args, io):
     for data, label, seg in test_loader:
         count += 1
         data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
-        data = data.permute(0, 2, 1)
+        # data = data.permute(0, 2, 1)
         logits_cls, logits_seg, node1, node1_static = model(data)
         preds = logits_cls.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
