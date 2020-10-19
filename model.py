@@ -146,10 +146,11 @@ class DGCNN_cls(nn.Module):
 
 
 class DGCNN_scan(nn.Module):
-    def __init__(self, args, output_channels=15):
+    def __init__(self, args, output_channels=15, seg_num_all=2):
         super(DGCNN_scan, self).__init__()
         self.args = args
         self.k = args.k
+        self.seg_num_all = 2
 
         self.bn1 = nn.BatchNorm2d(64)
         self.bn2 = nn.BatchNorm2d(64)
