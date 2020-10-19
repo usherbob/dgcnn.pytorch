@@ -117,6 +117,8 @@ def train(args, io):
             batch_size = data.size()[0]
             opt.zero_grad()
             logits_cls, logits_seg, node1, node1_static = model(data)
+            print('dtype of label:{}'.format(label.dtype))
+            print('dtype of logits_cls:{}'.format(logits_cls.dtype))
             loss_cls = criterion(logits_cls, label)
             loss_seg = softmax_segmenter(logits_seg, seg)
             loss_cd = compute_chamfer_distance(node1, data)
