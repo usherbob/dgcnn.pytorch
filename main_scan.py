@@ -56,7 +56,7 @@ def train(args, io):
     if args.model == 'pointnet':
         model = PointNet(args).to(device)
     elif args.model == 'dgcnn':
-        model = DGCNN_cls(args).to(device)
+        model = DGCNN_scan(args).to(device)
     else:
         raise Exception("Not implemented")
 
@@ -195,7 +195,7 @@ def test(args, io):
     if args.model == 'pointnet':
         model = PointNet(args).to(device)
     elif args.model == 'dgcnn':
-        model = DGCNN_cls(args).to(device)
+        model = DGCNN_scan(args).to(device)
     else:
         raise Exception("Not implemented")
 
