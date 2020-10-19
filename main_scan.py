@@ -29,6 +29,22 @@ from util import cal_loss, compute_chamfer_distance, IOStream
 import sklearn.metrics as metrics
 
 
+class CrossEntropyLossSeg(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(CrossEntropyLossSeg, self).__init__()
+        self.nll_loss = nn.NLLLoss(weight, size_average)
+
+    def forward(self, inputs, targets):
+        '''
+        :param inputs: BxclassxN
+        :param targets: BxN
+        :return:
+        '''
+        inputs = inputs.unsqueeze(3)
+        targets = targets.unsqueeze(2)
+        return self.nll_loss(F.log_softmax(inputs, dim=1), targets)
+
+
 def _init_():
     ckpt_dir = '/opt/data/private/ckpt/scan'
     if not os.path.exists(ckpt_dir):
@@ -63,6 +79,8 @@ def train(args, io):
     print(str(model))
 
     model = nn.DataParallel(model)
+    softmax_segmenter = CrossEntropyLossSeg()
+    softmax_segmenter.to(device)
     seg_num_all = 2
     print("Let's use", torch.cuda.device_count(), "GPUs!")
 
@@ -100,8 +118,7 @@ def train(args, io):
             opt.zero_grad()
             logits_cls, logits_seg, node1, node1_static = model(data)
             loss_cls = criterion(logits_cls, label)
-            seg_pred = logits_seg.permute(0, 2, 1).contiguous()
-            loss_seg = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
+            loss_seg = softmax_segmenter(logits_seg, seg)
             loss_cd = compute_chamfer_distance(node1, data)
             loss = loss_cls + loss_seg + loss_cd
             loss.backward()
@@ -155,8 +172,7 @@ def train(args, io):
                 batch_size = data.size()[0]
                 logits_cls, logits_seg, node1, node1_static = model(data)
                 loss_cls = criterion(logits_cls, label)
-                seg_pred = logits_seg.permute(0, 2, 1).contiguous()
-                loss_seg = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
+                loss_seg = softmax_segmenter(logits_seg, seg)
                 loss_cd = compute_chamfer_distance(node1, data)
                 loss = loss_cls + loss_seg + loss_cd
                 preds = logits_cls.max(dim=1)[1]
