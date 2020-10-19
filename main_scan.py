@@ -186,7 +186,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/training_objectdataset.h5',
+    test_loader = DataLoader(ScanObject(h5_filename='/opt/data/private/data/ScanObjectNN/main_split/test_objectdataset.h5',
                                         num_points=args.num_points), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
