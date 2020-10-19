@@ -95,7 +95,7 @@ def train(args, io):
         train_true = []
         for data, label, seg in train_loader:
             data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
-            data = data.permute(0, 2, 1)
+            # data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
             logits_cls, logits_seg, node1, node1_static = model(data)
@@ -151,7 +151,7 @@ def train(args, io):
         with torch.no_grad():
             for data, label, seg in test_loader:
                 data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
-                data = data.permute(0, 2, 1)
+                # data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
                 logits_cls, logits_seg, node1, node1_static = model(data)
                 loss_cls = criterion(logits_cls, label)
@@ -207,7 +207,7 @@ def test(args, io):
     count = 0
     for data, label in test_loader:
         count += 1
-        data, label = data.to(device), label.to(device).squeeze()
+        data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
         data = data.permute(0, 2, 1)
         logits_cls, logits_seg, node1, node1_static = model(data)
         preds = logits_cls.max(dim=1)[1]
