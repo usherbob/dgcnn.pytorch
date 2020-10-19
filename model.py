@@ -262,7 +262,7 @@ class DGCNN_scan(nn.Module):
 
         x = torch.cat((x, x1), dim=1)  # (batch_size, 256+64, num_points)
         x = self.conv9(x)  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
-        x = self.dp(x)
+        x = self.dp3(x)
 
         logits_seg = self.conv10(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
