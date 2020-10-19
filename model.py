@@ -235,9 +235,9 @@ class DGCNN_scan(nn.Module):
         x = torch.cat([x3, x4], dim=1)
         x_t2 = self.conv5(x)
 
-        x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        vector = torch.cat((x1, x2), 1)  # (batch_size, emb_dims*2)
+        x_t1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+        x_t2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+        vector = torch.cat((x_t1, x_t2), 1)  # (batch_size, emb_dims*2)
 
         ## classification
         x = F.leaky_relu(self.bn6(self.linear1(vector)), negative_slope=0.2)  # (batch_size, emb_dims*2) -> (batch_size, 512)
@@ -255,8 +255,8 @@ class DGCNN_scan(nn.Module):
         x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
         x = unpool(node1_static, xyz, x)
-        print('shape of x2: {}'.format(x2.shape))
-        print('shape of x: {}'.format(x.shape))
+        # print('shape of x2: {}'.format(x2.shape))
+        # print('shape of x: {}'.format(x.shape))
         x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points)
         x = self.conv8(x)  # (batch_size, 256+64, num_points) -> (batch_size, 256, num_points)
 
