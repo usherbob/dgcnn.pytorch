@@ -112,7 +112,7 @@ def train(args, io):
         train_pred = []
         train_true = []
         for data, label, seg in train_loader:
-            data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
+            data, label, seg = data.to(device), label.to(device), seg.to(device)
             # data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
@@ -169,7 +169,7 @@ def train(args, io):
         test_true = []
         with torch.no_grad():
             for data, label, seg in test_loader:
-                data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
+                data, label, seg = data.to(device), label.to(device), seg.to(device)
                 # data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
                 logits_cls, logits_seg, node1, node1_static = model(data)
