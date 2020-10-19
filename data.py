@@ -71,7 +71,7 @@ def download_S3DIS():
 
 
 def load_data_cls(partition):
-    BASE_DIR = '/opt/data/private/bob'
+    BASE_DIR = '/ceph'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
     all_label = []
@@ -89,7 +89,7 @@ def load_data_cls(partition):
 
 def load_data_partseg(partition):
     # download_shapenetpart()
-    BASE_DIR = '/opt/data/private/bob'
+    BASE_DIR = '/ceph'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
     all_label = []
@@ -116,7 +116,7 @@ def load_data_partseg(partition):
 
 def prepare_test_data_semseg():
     # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATA_DIR = '/opt/data/private/bob/data'
+    DATA_DIR = '/ceph/data'
     if not os.path.exists(os.path.join(DATA_DIR, 'stanford_indoor3d')):
         os.system('python prepare_data/collect_indoor3d_data.py')
     if not os.path.exists(os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data_test')):
@@ -124,7 +124,7 @@ def prepare_test_data_semseg():
 
 
 def load_data_semseg(partition, test_area):
-    BASE_DIR = '/opt/data/private/bob'
+    BASE_DIR = '/ceph'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     # download_S3DIS()
     prepare_test_data_semseg()
