@@ -30,7 +30,7 @@ import sklearn.metrics as metrics
 
 
 def _init_():
-    ckpt_dir = '/opt/data/private/ckpt/cls'
+    ckpt_dir = '/ceph/ckpt/cls'
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir + '/' + args.exp_name):
@@ -171,7 +171,7 @@ def train(args, io):
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), '/opt/data/private/ckpt/cls/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), '/ceph/ckpt/cls/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
@@ -204,8 +204,8 @@ def test(args, io):
         test_pred.append(preds.detach().cpu().numpy())
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
-                np.save('/opt/data/private/ckpt/cls/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
+                np.save('/ceph/ckpt/cls/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
+                np.save('/ceph/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
@@ -261,7 +261,7 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream('/opt/data/private/ckpt/cls/' + args.exp_name + '/run.log')
+    io = IOStream('/ceph/ckpt/cls/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
