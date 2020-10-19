@@ -331,7 +331,7 @@ class Pool_FPS(nn.Module):
         xyz: B, 3, N
         feature: B, C, N
         """
-        idx = pointnet2_utils.furthest_point_sample(xyz.permute(0, 2, 1), self.k)
+        idx = pointnet2_utils.furthest_point_sample(xyz.permute(0, 2, 1).contiguous(), self.k)
         idx = idx.type('torch.cuda.LongTensor')
         xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
         xyz_idx = xyz_idx.permute(0, 2, 1)
