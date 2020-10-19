@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from pointnet2_ops_lib.pointnet2_ops import pointnet2_utils
+from pointnet2_ops import pointnet2_utils
 
 
 def knn(x, k):
