@@ -96,8 +96,8 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, node1, node1_static = model(data)
-            loss_cls = criterion(logits, label)
+            logits, node1, logits_m = model(data)
+            loss_cls = criterion(logits, label) + 0.1 * criterion(logits_m, label)
             loss_cd = compute_chamfer_distance(node1, data)
             loss = loss_cls + loss_cd
             loss.backward()
@@ -146,8 +146,8 @@ def train(args, io):
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits, node1, node1_static = model(data)
-                loss_cls = criterion(logits, label)
+                logits, node1, logits_m = model(data)
+                loss_cls = criterion(logits, label) + 0.1 * criterion(logits_m, label)
                 loss_cd = compute_chamfer_distance(node1, data)
                 loss = loss_cls + loss_cd
                 preds = logits.max(dim=1)[1]
@@ -198,7 +198,7 @@ def test(args, io):
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
-        logits, node1, node1_static = model(data)
+        logits, node1, logits_m = model(data)
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())

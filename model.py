@@ -117,7 +117,7 @@ class DGCNN_cls(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+        node1, node_features_1, logits = self.pool1(xyz, x_t1_)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -142,7 +142,7 @@ class DGCNN_cls(nn.Module):
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
         
-        return x, node1, node1_static
+        return x, node1, logits
 
 
 class DGCNN_scan(nn.Module):
@@ -329,7 +329,7 @@ class Pool(nn.Module):
         # principal component
         self.proj = nn.Conv1d(in_dim, in_dim, 1) # single_head 8
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
-        self.fc = nn.Conv1d(num_sample, num_class, 1)
+        self.fc = nn.Linear(num_sample, num_class, 1)
 
     def forward(self, xyz, feature):
         Z = self.drop(feature)
