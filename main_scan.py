@@ -61,9 +61,9 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ScanObject(h5_filename='/ceph/data/ScanObjectNN/main_split/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
+    train_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/ScanObjectNN/main_split/{}'.format(args.file_name.replace('training', 'test')),
+    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/main_split/{}'.format(args.file_name.replace('training', 'test')),
                                         num_points=args.num_points), num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -210,7 +210,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/ScanObjectNN/main_split/{}'.format(args.file_name.replace('training', 'test')),
+    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
                                         num_points=args.num_points), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
