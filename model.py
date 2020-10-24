@@ -220,7 +220,7 @@ class DGCNN_scan(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+        node1, node_features_1, logits_m = self.pool1(xyz, x_t1_)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -254,7 +254,7 @@ class DGCNN_scan(nn.Module):
         x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
         x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        x = unpool(node1_static, xyz, x)
+        x = unpool(node1, xyz, x)
         # print('shape of x2: {}'.format(x2.shape))
         # print('shape of x: {}'.format(x.shape))
         x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points)
@@ -266,7 +266,7 @@ class DGCNN_scan(nn.Module):
 
         logits_seg = self.conv10(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
-        return logits_cls, logits_seg, node1, node1_static
+        return logits_cls, logits_seg, node1, logits_m
 
 
 class Transform_Net(nn.Module):

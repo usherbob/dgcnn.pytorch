@@ -63,7 +63,7 @@ def _init_():
 def train(args, io):
     train_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/main_split/{}'.format(args.file_name.replace('training', 'test')),
+    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
                                         num_points=args.num_points), num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -118,8 +118,8 @@ def train(args, io):
             # data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits_cls, logits_seg, node1, node1_static = model(data)
-            loss_cls = criterion(logits_cls, label)
+            logits_cls, logits_seg, node1, logits_m = model(data)
+            loss_cls = criterion(logits_cls, label) + 0.1 * criterion(logits_m, label)
             logits_seg = logits_seg.permute(0, 2, 1).contiguous()
             loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
             # loss_seg = softmax_segmenter(logits_seg, seg)
@@ -176,8 +176,8 @@ def train(args, io):
                 data, label, seg = data.to(device), label.to(device), seg.to(device)
                 # data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits_cls, logits_seg, node1, node1_static = model(data)
-                loss_cls = criterion(logits_cls, label)
+                logits_cls, logits_seg, node1, logits_m = model(data)
+                loss_cls = criterion(logits_cls, label) + 0.1 * criterion(logits_m, label)
                 logits_seg = logits_seg.permute(0, 2, 1).contiguous()
                 loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
                 # loss_seg = softmax_segmenter(logits_seg, seg)
@@ -233,7 +233,7 @@ def test(args, io):
         count += 1
         data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
         # data = data.permute(0, 2, 1)
-        logits_cls, logits_seg, node1, node1_static = model(data)
+        logits_cls, logits_seg, node1, logits_m = model(data)
         preds = logits_cls.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
