@@ -75,7 +75,7 @@ class PointNet(nn.Module):
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(64)
         self.bn2_m = nn.BatchNorm1d(args.emb_dims)
-        self.bn3 = nn.BatchNorm1d(64)
+        self.bn3 = nn.BatchNorm1d(128)
         self.bn4 = nn.BatchNorm1d(128)
         self.bn5 = nn.BatchNorm1d(args.emb_dims)
 
