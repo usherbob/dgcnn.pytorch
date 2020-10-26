@@ -194,7 +194,6 @@ class ModelNet40(Dataset):
     def __init__(self, num_points, num_classes, partition='train'):
         self.data, self.label = load_data_cls(partition, num_classes)
         self.num_points = num_points
-        self.num_points = num_classes
         self.partition = partition
 
     def __getitem__(self, item):
