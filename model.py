@@ -90,7 +90,7 @@ class PointNet(nn.Module):
         xyz = copy.deepcopy(x)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
-        x_t1 = F.relu(self.bn2_m(self.conv2(x)))
+        x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
         node1, node_features_1, node1_static = self.pool1(xyz, x)
         node_features_agg = aggregate(xyz, node1, x, 10)
