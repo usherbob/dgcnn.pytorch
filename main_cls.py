@@ -45,9 +45,9 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points), num_workers=8,
+    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points, num_classes=args.num_classes), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=8,
+    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes), num_workers=8,
                              batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -175,7 +175,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),
+    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes),
                              batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -257,6 +257,8 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
+    parser.add_argument('--num_classes', type=int, default=40,
+                        help='ModelNet40 or ModelNet10')
     args = parser.parse_args()
 
     _init_()
