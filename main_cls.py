@@ -99,7 +99,7 @@ def train(args, io):
             logits, node1, node1_static = model(data)
             loss_cls = criterion(logits, label)
             loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_cd
+            loss = loss_cls + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -259,6 +259,8 @@ if __name__ == "__main__":
                         help='visualize atp by saving nodes')
     parser.add_argument('--num_classes', type=int, default=40,
                         help='ModelNet10 or ModelNet40')
+    parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
+                        help='weights of cd_loss')
     args = parser.parse_args()
 
     _init_()
