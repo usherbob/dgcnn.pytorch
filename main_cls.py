@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR， ReduceLROnPlateau
 from data import ModelNet40
 from model import DGCNN_cls
 import numpy as np
@@ -76,7 +76,11 @@ def train(args, io):
         scheduler = CosineAnnealingLR(opt, args.epochs, eta_min=1e-3)
     elif args.scheduler == 'step':
         scheduler = StepLR(opt, step_size=20, gamma=0.7)
-    
+    elif args.scheduler == 'exp':
+        scheduler = ExponentialLR(opt, 0.7, last_epoch=-1)
+    elif args.scheduler == 'plateau':
+        scheduler = ReduceLROnPlateau(opt, mode='min', factor=0.7, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
+
     criterion = cal_loss
 
     best_test_acc = 0
