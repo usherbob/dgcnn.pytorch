@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR， ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR，ReduceLROnPlateau
 from data import ModelNet40
 from model import DGCNN_cls, PointNet
 import numpy as np
@@ -241,7 +241,7 @@ if __name__ == "__main__":
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='SGD momentum (default: 0.9)')
     parser.add_argument('--scheduler', type=str, default='cos', metavar='N',
-                        choices=['cos', 'step'],
+                        choices=['cos', 'step', 'exp', 'plateau'],
                         help='Scheduler to use, [cos, step]')
     parser.add_argument('--no_cuda', type=bool, default=False,
                         help='enables CUDA training')
