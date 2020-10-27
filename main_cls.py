@@ -22,7 +22,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR， ReduceLROnPlateau
 from data import ModelNet40
-from model import DGCNN_cls
+from model import DGCNN_cls, PointNet
 import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, compute_chamfer_distance, IOStream
@@ -45,9 +45,9 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points), num_workers=8,
+    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points, num_classes=args.num_classes), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=8,
+    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes), num_workers=8,
                              batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -103,7 +103,7 @@ def train(args, io):
             logits, node1, node1_static = model(data)
             loss_cls = criterion(logits, label)
             loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_cd
+            loss = loss_cls + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -179,7 +179,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),
+    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes),
                              batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -261,6 +261,10 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
+    parser.add_argument('--num_classes', type=int, default=40,
+                        help='ModelNet10 or ModelNet40')
+    parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
+                        help='weights of cd_loss')
     args = parser.parse_args()
 
     _init_()

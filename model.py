@@ -61,6 +61,51 @@ def get_graph_feature(x, k=20, idx=None, dim9=False):
   
     return feature      # (batch_size, 2*num_dims, num_points, k)
 
+class PointNet(nn.Module):
+    def __init__(self, args, output_channels=40):
+        super(PointNet, self).__init__()
+        self.args = args
+        self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
+        self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
+        self.conv2_m = nn.Conv1d(64, args.emb_dims, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
+        self.conv4 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
+        self.conv5 = nn.Conv1d(128, args.emb_dims, kernel_size=1, bias=False)
+
+        self.bn1 = nn.BatchNorm1d(64)
+        self.bn2 = nn.BatchNorm1d(64)
+        self.bn2_m = nn.BatchNorm1d(args.emb_dims)
+        self.bn3 = nn.BatchNorm1d(128)
+        self.bn4 = nn.BatchNorm1d(128)
+        self.bn5 = nn.BatchNorm1d(args.emb_dims)
+
+        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
+        self.bn6 = nn.BatchNorm1d(512)
+        self.dp1 = nn.Dropout()
+        self.linear2 = nn.Linear(512, output_channels)
+
+        self.pool1 = Pool(256, 64, 0.2)
+
+    def forward(self, x):
+        xyz = copy.deepcopy(x)
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
+
+        node1, node_features_1, node1_static = self.pool1(xyz, x)
+        node_features_agg = aggregate(xyz, node1, x, 10)
+        x = torch.cat((node_features_1, node_features_agg), dim=1)
+
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
+        x_t2 = F.relu(self.bn5(self.conv5(x)))
+
+        x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
+        x = F.relu(self.bn6(self.linear1(x)))
+        x = self.dp1(x)
+        x = self.linear2(x)
+        return x, node1, node1_static
+
 
 class DGCNN_cls(nn.Module):
     def __init__(self, args, output_channels=40):
@@ -495,14 +540,14 @@ class DGCNN_partseg(nn.Module):
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
         node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
-        node_features_agg = aggregate(xyz, node1, x2, self.k)
+        node_features_agg = aggregate(xyz, node1_static, x2, self.k//2)
         x = torch.cat((node_feature_1, node_features_agg), dim=1)      # (batch_size, 64, num_points//4) -> (batch_size, 128, num_points//4)
 
-        x = get_graph_feature(x, k=self.k//2)              # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
+        x = get_graph_feature(x, k=self.k//4)              # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
         x = self.conv5(x)                                  # (batch_size, 128*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x3 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
-        x = get_graph_feature(x3, k=self.k//2)             # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = get_graph_feature(x3, k=self.k//4)             # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv6(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x4 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
