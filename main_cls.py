@@ -30,7 +30,7 @@ import sklearn.metrics as metrics
 
 
 def _init_():
-    ckpt_dir = '/opt/data/private/bob/ckpt/cls'
+    ckpt_dir = '/ceph/ckpt/cls'
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir + '/' + args.exp_name):
@@ -159,7 +159,7 @@ def train(args, io):
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), '/opt/data/private/bob/ckpt/cls/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), '/ceph/ckpt/cls/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
@@ -245,7 +245,7 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream('/opt/data/private/bob/ckpt/cls/' + args.exp_name + '/run.log')
+    io = IOStream('/ceph/ckpt/cls/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
