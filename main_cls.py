@@ -15,6 +15,7 @@ Modified by
 
 from __future__ import print_function
 import os
+import time
 import argparse
 import torch
 import torch.nn as nn
@@ -177,11 +178,12 @@ def test(args, io):
         raise Exception("Not implemented")
 
     model = nn.DataParallel(model)
-    model.load_state_dict(torch.load(args.model_path))
+    #model.load_state_dict(torch.load(args.model_path))
     model = model.eval()
     test_true = []
     test_pred = []
     count = 0
+    start = time.time()
     for data, label in test_loader:
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
@@ -190,6 +192,8 @@ def test(args, io):
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
+    end = time.time()
+    print("propagation uses {} seconds per batch".format((end-start)/count))
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
