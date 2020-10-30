@@ -73,7 +73,7 @@ def train(args, io):
 
     # Try to load models
     if args.model == 'pointnet':
-        model = PointNet(args).to(device)
+        model = PointNet_scan(args).to(device)
     elif args.model == 'dgcnn':
         model = DGCNN_scan(args).to(device)
     else:
@@ -222,7 +222,7 @@ def test(args, io):
 
     # Try to load models
     if args.model == 'pointnet':
-        model = PointNet(args).to(device)
+        model = PointNet_scan(args).to(device)
     elif args.model == 'dgcnn':
         model = DGCNN_scan(args).to(device)
     else:
