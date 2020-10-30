@@ -193,9 +193,9 @@ class PointNet_scan(nn.Module):
         vector = torch.cat((x_t1, x_t2), 1)  # (batch_size, emb_dims*2)
 
         ## classification
-        x = F.relu(self.bn6(self.linear1(vector)), negative_slope=0.2)  # (batch_size, emb_dims*2) -> (batch_size, 512)
+        x = F.relu(self.bn6(self.linear1(vector)))  # (batch_size, emb_dims*2) -> (batch_size, 512)
         x = self.dp1(x)
-        x = F.relu(self.bn7(self.linear2(x)), negative_slope=0.2)  # (batch_size, 512) -> (batch_size, 256)
+        x = F.relu(self.bn7(self.linear2(x)))  # (batch_size, 512) -> (batch_size, 256)
         x = self.dp2(x)
         logits_cls = self.linear3(x)  # (batch_size, 256) -> (batch_size, output_channels)
 
