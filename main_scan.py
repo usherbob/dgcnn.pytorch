@@ -20,7 +20,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 from data import ScanObject
-from model import DGCNN_scan
+from model import PointNet_scan, DGCNN_scan
 import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, compute_chamfer_distance, IOStream
