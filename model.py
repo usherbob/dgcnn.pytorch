@@ -179,7 +179,7 @@ class PointNet_scan(nn.Module):
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
         node1, node_features_1 = self.pool1(xyz, x_t1_)
-        node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
+        node_features_agg = aggregate(xyz, node1, x_t1_, 20)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
         x3 = self.conv3(x)  # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
