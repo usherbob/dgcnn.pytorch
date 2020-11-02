@@ -324,7 +324,7 @@ def pool_cam(xyz, features, num_sample):
     weights = torch.mean(features, dim=-1, keepdim=True)
     features *= weights
     features = torch.sum(features, dim=1)
-    values, idx = torch.topk(features, num_sample, dim=-1) # bs, 8, k//8
+    values, idx = torch.topk(features, num_sample, dim=-1) # bs, num_sample
 
     xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
     xyz_idx = xyz_idx.permute(0, 2, 1)

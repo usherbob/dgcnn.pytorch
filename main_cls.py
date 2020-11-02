@@ -99,7 +99,7 @@ def train(args, io):
             logits, node1, logits_m = model(data)
             loss_cls = criterion(logits, label) + 0.1 * criterion(logits_m, label)
             loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_cd
+            loss = loss_cls + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -149,7 +149,7 @@ def train(args, io):
                 logits, node1, logits_m = model(data)
                 loss_cls = criterion(logits, label) + 0.1 * criterion(logits_m, label)
                 loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_cd
+                loss = loss_cls + args.cd_weights * loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -257,6 +257,8 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
+    parser.add_argument('--cd_weights', type=float, default=1.0, metavar='CW',
+                        help='weights of chamfer distance loss (default: 1.0)')
     args = parser.parse_args()
 
     _init_()
