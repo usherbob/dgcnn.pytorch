@@ -328,11 +328,11 @@ def pool_cam(xyz, features, num_sample):
     xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
     xyz_idx = xyz_idx.permute(0, 2, 1)
     node = xyz.gather(2, xyz_idx)  # Bx3xnpoint
-    feature_idx = idx.unsqueeze(2).repeat(1, 1, features.shape[1])
-    feature_idx = feature_idx.permute(0, 2, 1)
-    node_features = features.gather(2, feature_idx)  # Bx3xnpoint
+    # feature_idx = idx.unsqueeze(2).repeat(1, 1, features.shape[1])
+    # feature_idx = feature_idx.permute(0, 2, 1)
+    # node_features = features.gather(2, feature_idx)  # Bx3xnpoint
 
-    return node, node_features
+    return node
 
 
 class Pool(nn.Module):
