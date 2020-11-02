@@ -101,7 +101,7 @@ class DGCNN_cls(nn.Module):
         self.bn7 = nn.BatchNorm1d(256)
         self.dp2 = nn.Dropout(p=args.dropout)
         self.linear3 = nn.Linear(256, output_channels)
-        self.conv_cls = nn.Linear(128, output_channels)
+        self.conv_cls = nn.Conv1d(128, output_channels, kernel_size=1, bias=False)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -144,7 +144,7 @@ class DGCNN_cls(nn.Module):
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
         
-        return x, node1
+        return x, node1, logits_m
 
 
 class DGCNN_scan(nn.Module):
