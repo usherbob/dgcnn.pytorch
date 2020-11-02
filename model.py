@@ -84,16 +84,16 @@ class DGCNN_cls(nn.Module):
         self.conv2_m = nn.Sequential(nn.Conv1d(64 * 2, args.emb_dims, kernel_size=1, bias=False),
                                      self.bn2_m,
                                      nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
+        self.conv3 = nn.Sequential(nn.Conv2d(128*2, 256, kernel_size=1, bias=False),
                                    self.bn3,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv4 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
                                    self.bn4,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
+        self.conv5 = nn.Sequential(nn.Conv1d(128+256, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = Pool(args.num_points//4, 128, output_channels, 0.2)
+        # self.pool1 = Pool(args.num_points//4, 128, output_channels, 0.2)
         self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -101,6 +101,7 @@ class DGCNN_cls(nn.Module):
         self.bn7 = nn.BatchNorm1d(256)
         self.dp2 = nn.Dropout(p=args.dropout)
         self.linear3 = nn.Linear(256, output_channels)
+        self.conv_cls = nn.Linear(128, output_channels)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -116,12 +117,13 @@ class DGCNN_cls(nn.Module):
 
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
+        logits_m = self.conv_cls(x_t1_)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, logits = self.pool1(xyz, x_t1_)
+        node1, node_features_1 = pool_cam(xyz, logits_m, self.args.num_points//4)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
-        x = torch.cat((node_features_1, node_features_agg), dim=1)
+        # x = torch.cat((node_features_1, node_features_agg), dim=1)
 
-        x = get_graph_feature(x, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
+        x = get_graph_feature(node_features_agg, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv3(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
         x3 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 128, num_points, k) -> (batch_size, 128, num_points)
 
@@ -142,7 +144,7 @@ class DGCNN_cls(nn.Module):
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
         
-        return x, node1, logits
+        return x, node1
 
 
 class DGCNN_scan(nn.Module):
@@ -315,6 +317,23 @@ class Transform_Net(nn.Module):
         x = x.view(batch_size, 3, 3)            # (batch_size, 3*3) -> (batch_size, 3, 3)
 
         return x
+
+
+def pool_cam(xyz, features, num_sample):
+    weights = torch.mean(features, dim=-1, keepdim=True)
+    features *= weights
+    features = torch.sum(features, dim=1)
+    values, idx = torch.topk(features, num_sample, dim=-1) # bs, 8, k//8
+
+    xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
+    xyz_idx = xyz_idx.permute(0, 2, 1)
+    node = xyz.gather(2, xyz_idx)  # Bx3xnpoint
+    feature_idx = idx.unsqueeze(2).repeat(1, 1, features.shape[1])
+    feature_idx = feature_idx.permute(0, 2, 1)
+    node_features = features.gather(2, feature_idx)  # Bx3xnpoint
+
+    return node, node_features
+
 
 class Pool(nn.Module):
     def __init__(self, num_sample, in_dim, num_class, p):
