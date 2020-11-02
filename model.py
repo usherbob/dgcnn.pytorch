@@ -120,6 +120,7 @@ class DGCNN_cls(nn.Module):
         features = self.conv_cls(x_t1_)
         x_t1 = self.conv2_m(x_t1_)
         node1, logits_m = pool_cam(xyz, features, self.args.num_points//4)
+        print('shape of logits_m : {}'.format(logits_m.shape))
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         # x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -328,9 +329,6 @@ def pool_cam(xyz, features, num_sample):
     xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
     xyz_idx = xyz_idx.permute(0, 2, 1)
     node = xyz.gather(2, xyz_idx)  # Bx3xnpoint
-    # feature_idx = idx.unsqueeze(2).repeat(1, 1, features.shape[1])
-    # feature_idx = feature_idx.permute(0, 2, 1)
-    # node_features = features.gather(2, feature_idx)  # Bx3xnpoint
 
     return node, weights
 
