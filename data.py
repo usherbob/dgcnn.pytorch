@@ -70,12 +70,12 @@ def download_S3DIS():
             os.system('rm %s' % (zippath))
 
 
-def load_data_cls(partition):
+def load_data_cls(partition, num_classes):
     BASE_DIR = '/ceph'
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
     all_label = []
-    for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet40*hdf5_2048', '*%s*.h5'%partition)):
+    for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet{}*hdf5_2048'.format(num_classes), '*%s*.h5'%partition)):
         f = h5py.File(h5_name, 'r+')
         data = f['data'][:].astype('float32')
         label = f['label'][:].astype('int64')
@@ -191,8 +191,8 @@ def rotate_pointcloud(pointcloud):
 
 
 class ModelNet40(Dataset):
-    def __init__(self, num_points, partition='train'):
-        self.data, self.label = load_data_cls(partition)
+    def __init__(self, num_points, num_classes, partition='train'):
+        self.data, self.label = load_data_cls(partition, num_classes)
         self.num_points = num_points
         self.partition = partition        
 
