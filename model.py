@@ -117,9 +117,9 @@ class DGCNN_cls(nn.Module):
 
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
-        features = self.conv_cls(x_t1_)
+        logits = self.conv_cls(x_t1_)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, logits_m = pool_cam(xyz, features, self.args.num_points//4)
+        node1, node_features_1, logits_m = pool_cam(xyz, logits, x_t1_, self.args.num_points//4)
         # print('shape of logits_m : {}'.format(logits_m.shape))
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
@@ -320,13 +320,14 @@ class Transform_Net(nn.Module):
         return x
 
 
-def pool_cam(xyz, features, num_sample):
+def pool_cam(xyz, logits, features, num_sample):
     '''
     xyz: bs, 3, N
+    logits: bs, num_clss, N
     features: bs, C, N
     '''
-    weights = torch.mean(features, dim=-1, keepdim=True) # bs, C, 1
-    logits = features * weights
+    weights = torch.mean(logits, dim=-1, keepdim=True) # bs, C, 1
+    logits *= weights
     logits = torch.sum(logits, dim=1) # bs, N
     values, idx = torch.topk(logits, num_sample, dim=-1) # bs, num_sample
 
