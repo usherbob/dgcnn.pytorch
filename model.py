@@ -84,7 +84,7 @@ class DGCNN_cls(nn.Module):
         self.conv2_m = nn.Sequential(nn.Conv1d(64 * 2, args.emb_dims, kernel_size=1, bias=False),
                                      self.bn2_m,
                                      nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv2d(128*2, 256, kernel_size=1, bias=False),
+        self.conv3 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
                                    self.bn3,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv4 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
@@ -119,12 +119,12 @@ class DGCNN_cls(nn.Module):
         x_t1_ = torch.cat((x1, x2), dim=1)
         features = self.conv_cls(x_t1_)
         x_t1 = self.conv2_m(x_t1_)
-        node1, logits_m = pool_cam(xyz, features, self.args.num_points//4)
+        node1, node_features_1, logits_m = pool_cam(xyz, features, self.args.num_points//4)
         # print('shape of logits_m : {}'.format(logits_m.shape))
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
-        # x = torch.cat((node_features_1, node_features_agg), dim=1)
+        x = torch.cat((node_features_1, node_features_agg), dim=1)
 
-        x = get_graph_feature(node_features_agg, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
+        x = get_graph_feature(x, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv3(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
         x3 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 128, num_points, k) -> (batch_size, 128, num_points)
 
@@ -321,16 +321,24 @@ class Transform_Net(nn.Module):
 
 
 def pool_cam(xyz, features, num_sample):
-    weights = torch.mean(features, dim=-1, keepdim=True)
-    features *= weights
-    features = torch.sum(features, dim=1)
-    values, idx = torch.topk(features, num_sample, dim=-1) # bs, num_sample
+    '''
+    xyz: bs, 3, N
+    features: bs, C, N
+    '''
+    weights = torch.mean(features, dim=-1, keepdim=True) # bs, C, 1
+    logits = features * weights
+    logits = torch.sum(logits, dim=1) # bs, N
+    values, idx = torch.topk(logits, num_sample, dim=-1) # bs, num_sample
 
     xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
     xyz_idx = xyz_idx.permute(0, 2, 1)
     node = xyz.gather(2, xyz_idx)  # Bx3xnpoint
 
-    return node, torch.squeeze(weights, dim=-1)
+    feature_idx = idx.unsqueeze(2).repeat(1, 1, features.shape[1])
+    feature_idx = feature_idx.permute(0, 2, 1)
+    node_features = features.gather(2, feature_idx)  # Bx3xnpoint
+
+    return node, node_features, torch.squeeze(weights, dim=-1)
 
 
 class Pool(nn.Module):
