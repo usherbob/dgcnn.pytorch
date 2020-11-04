@@ -80,7 +80,7 @@ class PointNet(nn.Module):
         self.bn4 = nn.BatchNorm1d(128)
         self.bn5 = nn.BatchNorm1d(args.emb_dims)
 
-        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
+        self.linear1 = nn.Linear(args.emb_dims, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
@@ -102,7 +102,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn4(self.conv4(x)))
         x_t2 = F.relu(self.bn5(self.conv5(x)))
 
-        x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
+        x = F.adaptive_max_pool1d(x_t2, 1).squeeze()
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
@@ -141,7 +141,7 @@ class DGCNN_cls(nn.Module):
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
         # self.pool1 = Pool(args.num_points//4, 128, output_channels, 0.2)
-        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
+        self.linear1 = nn.Linear(args.emb_dims, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
         self.linear2 = nn.Linear(512, 256)
@@ -182,9 +182,9 @@ class DGCNN_cls(nn.Module):
         x = torch.cat([x3, x4], dim=1)
         x_t2 = self.conv5(x)
 
-        x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x = torch.cat((x1, x2), 1)              # (batch_size, emb_dims*3)
+        # x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+        x = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+        # x = torch.cat((x1, x2), 1)              # (batch_size, emb_dims*3)
 
         x = F.leaky_relu(self.bn6(self.linear1(x)), negative_slope=0.2) # (batch_size, emb_dims*2) -> (batch_size, 512)
         x = self.dp1(x)
