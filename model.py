@@ -148,7 +148,7 @@ class DGCNN_cls(nn.Module):
         self.bn7 = nn.BatchNorm1d(256)
         self.dp2 = nn.Dropout(p=args.dropout)
         self.linear3 = nn.Linear(256, output_channels)
-        self.conv_cls = nn.Conv1d(128, output_channels, kernel_size=1, bias=False)
+        self.conv_cls = nn.Conv1d(args.emb_dims, output_channels, kernel_size=1, bias=False)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -164,8 +164,8 @@ class DGCNN_cls(nn.Module):
 
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
-        logits = self.conv_cls(x_t1_)
         x_t1 = self.conv2_m(x_t1_)
+        logits = self.conv_cls(x_t1)
         node1, node_features_1, logits_m = pool_cam(xyz, logits, x_t1_, self.args.num_points//4)
         # print('shape of logits_m : {}'.format(logits_m.shape))
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
