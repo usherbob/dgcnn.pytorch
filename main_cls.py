@@ -97,7 +97,7 @@ def train(args, io):
             batch_size = data.size()[0]
             opt.zero_grad()
             logits, node1, logits_m = model(data)
-            loss_cls = criterion(logits, label) + 0.1 * criterion(logits_m, label)
+            loss_cls = criterion(logits, label) + criterion(logits_m, label)
             loss_cd = compute_chamfer_distance(node1, data)
             loss = loss_cls + args.cd_weights * loss_cd
             loss.backward()
@@ -147,7 +147,7 @@ def train(args, io):
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
                 logits, node1, logits_m = model(data)
-                loss_cls = criterion(logits, label) + 0.1 * criterion(logits_m, label)
+                loss_cls = criterion(logits, label) + criterion(logits_m, label)
                 loss_cd = compute_chamfer_distance(node1, data)
                 loss = loss_cls + args.cd_weights * loss_cd
                 preds = logits.max(dim=1)[1]
