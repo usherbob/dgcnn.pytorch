@@ -285,6 +285,7 @@ class DGCNN_cls(nn.Module):
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_) # lift channels
         critical_t1 = F.adaptive_max_pool1d(x_t1, 1)   # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims, 1)
+        print('shape of critical_t1:{}'.format(critical_t1.shape()))
         node1, node_features_1 = cri_pool(self.args.num_points//4, xyz, x_t1_, critical_t1)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
