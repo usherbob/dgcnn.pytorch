@@ -79,12 +79,10 @@ class PointNet(nn.Module):
         self.bn4 = nn.BatchNorm1d(128)
         self.bn5 = nn.BatchNorm1d(args.emb_dims)
 
-        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
+        self.linear1 = nn.Linear(args.emb_dims, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
-
-        self.pool1 = Pool(256, 64, 0.2)
 
     def forward(self, x):
         xyz = copy.deepcopy(x)
@@ -92,19 +90,30 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        node1, node_features_1, node1_static = self.pool1(xyz, x)
-        node_features_agg = aggregate(xyz, node1, x, 10)
+        # node1, node_features_1, node1_static = self.pool1(xyz, x)
+        # node_features_agg = aggregate(xyz, node1, x, 10)
+        # x = torch.cat((node_features_1, node_features_agg), dim=1)
+
+        critical_t1 = F.adaptive_max_pool1d(x_t1, 1, keep_dim=True)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims, 1)
+        node1, node_features_1 = cri_pool(self.args.num_points // 4, xyz, x, critical_t1)
+        node_features_agg = aggregate(xyz, node1, x, 20)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
         x_t2 = F.relu(self.bn5(self.conv5(x)))
 
-        x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
+        x = critical_t1.squeeze()
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
-        x = self.linear2(x)
-        return x, node1, node1_static
+        logits_1 = self.linear2(x)
+
+        x = F.adaptive_max_pool1d(x_t2, 1).squeeze()
+        x = F.relu(self.bn6(self.linear1(x)))
+        x = self.dp1(x)
+        logits_2 = self.linear2(x)
+        logits = (logits_1 + logits_2) / 2.
+        return logits, node1
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):
@@ -252,8 +261,7 @@ class DGCNN_cls(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = Pool(args.num_points//4, 128, 0.2)
-        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
+        self.linear1 = nn.Linear(args.emb_dims, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
         self.linear2 = nn.Linear(512, 256)
@@ -275,8 +283,9 @@ class DGCNN_cls(nn.Module):
 
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
-        x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+        x_t1 = self.conv2_m(x_t1_) # lift channels
+        critical_t1 = F.adaptive_max_pool1d(x_t1, 1, keep_dim=True)   # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims, 1)
+        node1, node_features_1 = cri_pool(self.args.num_points//4, xyz, x_t1_, critical_t1)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -291,17 +300,26 @@ class DGCNN_cls(nn.Module):
         x = torch.cat([x3, x4], dim=1)
         x_t2 = self.conv5(x)
 
-        x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x = torch.cat((x1, x2), 1)              # (batch_size, emb_dims*3)
+        critical_t2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
 
-        x = F.leaky_relu(self.bn6(self.linear1(x)), negative_slope=0.2) # (batch_size, emb_dims*2) -> (batch_size, 512)
+        ## classification in the first branch
+        critical_t1 = critical_t1.view(batch_size, -1)
+        x = F.leaky_relu(self.bn6(self.linear1(critical_t1)), negative_slope=0.2) # (batch_size, emb_dims*2) -> (batch_size, 512)
         x = self.dp1(x)
         x = F.leaky_relu(self.bn7(self.linear2(x)), negative_slope=0.2) # (batch_size, 512) -> (batch_size, 256)
         x = self.dp2(x)
-        x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
+        logits_1 = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
+
+        ## classification in the second branch
+        x = F.leaky_relu(self.bn6(self.linear1(critical_t2)),
+                         negative_slope=0.2)  # (batch_size, emb_dims*2) -> (batch_size, 512)
+        x = self.dp1(x)
+        x = F.leaky_relu(self.bn7(self.linear2(x)), negative_slope=0.2)  # (batch_size, 512) -> (batch_size, 256)
+        x = self.dp2(x)
+        logits_2 = self.linear3(x)  # (batch_size, 256) -> (batch_size, output_channels)
+        logits = (logits_1 + logits_2) / 2.
         
-        return x, node1, node1_static
+        return logits, node1
 
 
 class DGCNN_scan(nn.Module):
@@ -474,6 +492,31 @@ class Transform_Net(nn.Module):
         x = x.view(batch_size, 3, 3)            # (batch_size, 3*3) -> (batch_size, 3, 3)
 
         return x
+
+def cri_pool(k, xyz, features, criticals):
+    """
+    input:
+        k: num of kpoints
+        xyz: input points coordinates (B, 3, N)
+        features: input points features (B, C, N)
+        criticals: critical points features (B, C)
+    output:
+        nodes: (B, 3, k)
+        node_features: (B, C, k)
+    """
+    scores = torch.sum(features * criticals, dim=1)  # bs, n
+    values, idx = torch.topk(scores, k, dim=-1)  # bs, 8, k//8
+
+    xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
+    xyz_idx = xyz_idx.permute(0, 2, 1)
+    nodes = xyz.gather(2, xyz_idx)  # Bx3xnpoint
+    feature_idx = idx.unsqueeze(2).repeat(1, 1, features.shape[1])
+    feature_idx = feature_idx.permute(0, 2, 1)
+    node_features = features.gather(2, feature_idx)  # Bx3xnpoint
+    return nodes, node_features
+
+
+
 
 class Pool(nn.Module):
     def __init__(self, k, in_dim, p):

@@ -100,7 +100,7 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, node1, node1_static = model(data)
+            logits, node1 = model(data)
             loss_cls = criterion(logits, label)
             loss_cd = compute_chamfer_distance(node1, data)
             loss = loss_cls + args.cd_weights * loss_cd
@@ -150,7 +150,7 @@ def train(args, io):
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits, node1, node1_static = model(data)
+                logits, node1 = model(data)
                 loss_cls = criterion(logits, label)
                 loss_cd = compute_chamfer_distance(node1, data)
                 loss = loss_cls + loss_cd
@@ -202,7 +202,7 @@ def test(args, io):
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
-        logits, node1, node1_static = model(data)
+        logits, node1 = model(data)
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
@@ -263,7 +263,7 @@ if __name__ == "__main__":
                         help='visualize atp by saving nodes')
     parser.add_argument('--num_classes', type=int, default=40,
                         help='ModelNet10 or ModelNet40')
-    parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
+    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
     args = parser.parse_args()
 
