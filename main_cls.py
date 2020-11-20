@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR，ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR, ReduceLROnPlateau
 from data import ModelNet40
 from model import DGCNN_cls, PointNet
 import numpy as np
