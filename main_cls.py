@@ -175,7 +175,7 @@ def train(args, io):
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), '/opt/private/bob/data/ckpt/cls/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), '/opt/data/private/bob/ckpt/cls/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
