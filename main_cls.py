@@ -101,9 +101,10 @@ def train(args, io):
             batch_size = data.size()[0]
             opt.zero_grad()
             logits, node1, node1_static = model(data)
-            loss_cls = criterion(logits, label)
-            loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + args.cd_weights * loss_cd
+            precision = torch.exp(-model.sigma)
+            loss_cls = precision[0] * criterion(logits, label) + model.sigma[0]
+            loss_cd = precision[1] * compute_chamfer_distance(node1, data) + model.sigma[1]
+            loss = loss_cls + loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]

@@ -85,6 +85,8 @@ class PointNet(nn.Module):
         self.linear2 = nn.Linear(512, output_channels)
 
         self.pool1 = Pool(256, 64, 0.2)
+        self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
+        self.sigma = self.sigma.to(device)
 
     def forward(self, x):
         xyz = copy.deepcopy(x)
