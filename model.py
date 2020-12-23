@@ -487,16 +487,19 @@ class Pool(nn.Module):
         self.k = k
         self.sigmoid = nn.Sigmoid()
         # principal component
-        self.proj = nn.Conv1d(in_dim, in_dim, 1) # single_head 8
+        self.proj = nn.Conv1d(in_dim, in_dim*8, 1) # multi_head 8
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
     def forward(self, xyz, feature):
         Z = self.drop(feature)
         # adaptive modeling of downsampling
         vector = torch.max(self.proj(Z).squeeze(), dim=-1, keepdim=True)[0] # bs, C, 1
-        weights = torch.sum(feature * vector, dim=1) # bs, C, n
-        scores = self.sigmoid(weights) # batchsize, 8, n
-        values, idx = torch.topk(scores, self.k, dim=-1) # bs, 8, k//8
+        vector = torch.reshape(vector, (vector.shape[0], -1, 8)) # bs, in_dim, 8
+        weights = torch.sum(feature.unsqueeze(-1) * vector.unsqueeze(-2), dim=1) # bs, n, 8
+        scores = self.sigmoid(weights) # batchsize, n, 8
+        values, idx = torch.topk(scores, self.k//8, dim=1) # bs, k//8, 8
+        values = torch.reshape(values, (values.shape[0], -1))
+        idx = torch.reshape(idx, (idx.shape[0], -1))
 
         xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
         xyz_idx = xyz_idx.permute(0, 2, 1)
