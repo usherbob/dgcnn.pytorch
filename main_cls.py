@@ -223,7 +223,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
-    parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
+    parser.add_argument('--model', type=str, default='pointnet', metavar='N',
                         choices=['pointnet', 'dgcnn'],
                         help='Model to use, [pointnet, dgcnn]')
     parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
@@ -261,7 +261,7 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
-    parser.add_argument('--num_classes', type=int, default=40,
+    parser.add_argument('--num_classes', type=int, default=10,
                         help='ModelNet10 or ModelNet40')
     parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
                         help='weights of cd_loss')
