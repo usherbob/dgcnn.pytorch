@@ -25,7 +25,7 @@ from data import ModelNet40
 from model import DGCNN_cls, PointNet
 import numpy as np
 from torch.utils.data import DataLoader
-from util import cal_loss, compute_chamfer_distance, IOStream
+from util import cal_loss, mi_loss, compute_chamfer_distance, IOStream
 import sklearn.metrics as metrics
 
 
@@ -100,11 +100,10 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, node1, node1_static = model(data)
-            precision = torch.exp(-model.module.sigma)
-            loss_cls = precision[0] * criterion(logits, label) + model.module.sigma[0]
-            loss_cd = precision[1] * compute_chamfer_distance(node1, data) + model.module.sigma[1]
-            loss = loss_cls + loss_cd
+            logits, ret = model(data)
+            loss_cls = criterion(logits, label)
+            loss_mi = mi_loss(ret)
+            loss = loss_cls + loss_mi
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -153,8 +152,8 @@ def train(args, io):
                 batch_size = data.size()[0]
                 logits, node1, node1_static = model(data)
                 loss_cls = criterion(logits, label)
-                loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_cd
+                loss_mi = mi_loss(ret, data)
+                loss = loss_cls + loss_mi
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size

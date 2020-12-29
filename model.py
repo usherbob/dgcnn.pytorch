@@ -180,7 +180,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
-        return x, node1, node1_static
+        return x, ret
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):

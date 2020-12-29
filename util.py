@@ -12,6 +12,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+def mi_loss(ret):
+    N = ret.shape[1] // 2
+    device = ret.device
+    lbl_t_s1 = torch.ones(N)
+    lbl_f_s1 = torch.zeros(N)
+    milbl_s1 = torch.cat((lbl_t_s1, lbl_f_s1), 0).to(device)
+    loss = F.binary_cross_entropy_with_logits(ret, milbl_s1)
+    return loss
 
 def cal_loss(pred, gold, smoothing=True):
     ''' Calculate cross entropy loss, apply label smoothing if needed. '''
