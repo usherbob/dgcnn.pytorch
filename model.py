@@ -61,6 +61,81 @@ def get_graph_feature(x, k=20, idx=None, dim9=False):
   
     return feature      # (batch_size, 2*num_dims, num_points, k)
 
+
+class Discriminator(nn.Module):
+    def __init__(self, n_h):
+        super().__init__()
+        self.f_k = nn.Bilinear(n_h, n_h, 1)
+        for m in self.modules():
+            self.weights_init(m)
+
+    def weights_init(self, m):
+        if isinstance(m, nn.Bilinear):
+            torch.nn.init.xavier_uniform_(m.weight.data)
+            if m.bias is not None:
+                m.bias.data.fill_(0.0)
+
+    def forward(self, c, h_pl, h_mi, s_bias1=None, s_bias2=None):
+        c_x = c
+        sc_1 = torch.squeeze(self.f_k(h_pl, c_x))
+        sc_2 = torch.squeeze(self.f_k(h_mi, c_x))
+        if s_bias1 is not None:
+            sc_1 += s_bias1
+        if s_bias2 is not None:
+            sc_2 += s_bias2
+        logits = torch.cat((sc_1, sc_2), 1).squeeze(-1)
+        v = logits.shape[0]
+        return logits, logits[:, v//2]
+
+
+class EdgeConv():
+    def __init__(self, k, in_dim, out_dim):
+        super().__init__()
+        self.k = k
+        self.conv = nn.Sequential(nn.Conv2d(in_dim, out_dim, kernel_size=1, bias=False),
+                                  nn.BatchNorm2d(out_dim),
+                                  nn.LeakyReLU(negative_slope=0.2))
+    def forward(x):
+        x = get_graph_feature(x, k=self.k)
+        x = self.conv(x)
+        x = x.max(dim=-1, keepdim=False)[0]
+        return x
+
+
+class IndexSelect(nn.Module):
+    '''
+    key module of mutual information pooling
+    '''
+    def __init__(self, k, n_h):
+        super().__init__()
+        self.k = k
+        self.sigm = nn.Sigmoid()
+        self.fc = nn.Sequential(nn.Conv1d(n_h, n_h),
+                                nn.BatchNorm1d(n_h),
+                                nn.ReLU())
+        self.disc = Discriminator(n_h)
+        self.center = EdgeConv(20, n_h, n_h)
+
+    def forward(self, seq1, samp_bias1=None, samp_bias2=None):
+        # seq2 = torch.zeros_like(seq1)
+        seq2 = seq1[:, torch.randperm(seq1.shape[1]), :]  # negative sampling
+        h_1 = self.fc(seq1)
+        h_2 = self.fc(seq2)
+        h_n1 = self.center(h_1)
+
+        X = self.sigm(h_n1)
+        ret, ret_true = self.disc(X, h_1, h_2, samp_bias1, samp_bias2)
+        scores = self.sigm(ret_true).squeeze()
+        # num_nodes = h_1.shape[1]
+        values, idx = torch.topk(scores, self.k, dim=1)
+
+        seq_idx = idx.unsqueeze(2).repeat(1, 1, seqq.shape[1])
+        seq_idx = seq_idx.permute(0, 2, 1)
+        seq_static = seq1.gather(2, seq_idx)  # Bx3xnpoint
+        seq = torch.mul(seq, values)
+        return seq, values, idx, ret
+
+
 class PointNet(nn.Module):
     def __init__(self, args, output_channels=40):
         super(PointNet, self).__init__()
@@ -68,7 +143,7 @@ class PointNet(nn.Module):
         self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
         self.conv2_m = nn.Conv1d(64, args.emb_dims, kernel_size=1, bias=False)
-        self.conv3 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv1d(64, 128, kernel_size=1, bias=False)
         self.conv4 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
         self.conv5 = nn.Conv1d(128, args.emb_dims, kernel_size=1, bias=False)
 
@@ -84,7 +159,7 @@ class PointNet(nn.Module):
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = Pool(256, 64, 0.2)
+        self.pool1 = IndexSelect(256, 64)
         self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
@@ -93,9 +168,9 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        node1, node_features_1, node1_static = self.pool1(xyz, x)
-        node_features_agg = aggregate(xyz, node1, x, 10)
-        x = torch.cat((node_features_1, node_features_agg), dim=1)
+        x, values, idx, ret = self.pool1(xyz, x)
+        # node_features_agg = aggregate(xyz, node1, x, 10)
+        # x = torch.cat((node_features_1, node_features_agg), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
