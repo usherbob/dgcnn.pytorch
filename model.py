@@ -120,9 +120,9 @@ class IndexSelect(nn.Module):
 
     def forward(self, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
-        seq2 = seq1[:, torch.randperm(seq1.shape[1]), :]  # negative sampling
-        h_1 = self.fc(seq1)
-        h_2 = self.fc(seq2)
+        seq2 = seq1[:, :, torch.randperm(seq1.shape[1])]  # negative sampling
+        h_1 = self.fc(seq1.permute(0, 2, 1))
+        h_2 = self.fc(seq2.permute(0, 2, 1))
         h_n1 = self.center(h_1)
 
         X = self.sigm(h_n1)
@@ -131,10 +131,10 @@ class IndexSelect(nn.Module):
         # num_nodes = h_1.shape[1]
         values, idx = torch.topk(scores, self.k, dim=1)
 
-        seq_idx = idx.unsqueeze(2).repeat(1, 1, seqq.shape[1])
+        seq_idx = idx.unsqueeze(2).repeat(1, 1, seq1.shape[1])
         seq_idx = seq_idx.permute(0, 2, 1)
         seq_static = seq1.gather(2, seq_idx)  # Bx3xnpoint
-        seq = torch.mul(seq, values)
+        seq = torch.mul(seq_static, values)
         return seq, values, idx, ret
 
 
