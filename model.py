@@ -136,7 +136,7 @@ class IndexSelect(nn.Module):
         seq_idx = seq_idx.permute(0, 2, 1)
         seq_static = seq1.gather(2, seq_idx)  # Bx3xnpoint
         print("shape of seq_static: {}".format(seq_static.shape))
-        seq = torch.mul(seq_static, values)
+        seq = torch.mul(seq_static, values.unsqueeze(dim=1))
         return seq, values, idx, ret
 
 
