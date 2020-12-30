@@ -171,9 +171,9 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        x, values, idx, ret, node1 = self.pool1(xyz, x)
+        node_features, values, idx, ret, node1 = self.pool1(xyz, x)
         node_features_agg = aggregate(xyz, node1, x, 10)
-        x = torch.cat((x, node_features_agg), dim=1)
+        x = torch.cat((node_features, node_features_agg), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
