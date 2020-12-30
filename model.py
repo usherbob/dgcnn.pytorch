@@ -126,7 +126,7 @@ class IndexSelect(nn.Module):
         h_n1 = self.center(h_1)
 
         X = self.sigm(h_n1)
-        ret, ret_true = self.disc(X.permute(0, 2, 1), h_1.permute(0, 2, 1), h_2.permute(0, 2, 1), samp_bias1, samp_bias2)
+        ret, ret_true = self.disc(X.permute(0, 2, 1).contiguous(), h_1.permute(0, 2, 1).contiguous(), h_2.permute(0, 2, 1).contiguous(), samp_bias1, samp_bias2)
         scores = self.sigm(ret_true).squeeze()
         # num_nodes = h_1.shape[1]
         values, idx = torch.topk(scores, self.k, dim=1)
