@@ -92,7 +92,7 @@ class EdgeConv(nn.Module):
     def __init__(self, k, in_dim, out_dim):
         super().__init__()
         self.k = k
-        self.conv = nn.Sequential(nn.Conv2d(in_dim, out_dim, kernel_size=1, bias=False),
+        self.conv = nn.Sequential(nn.Conv2d(in_dim*2, out_dim, kernel_size=1, bias=False),
                                   nn.BatchNorm2d(out_dim),
                                   nn.LeakyReLU(negative_slope=0.2))
     def forward(self, x):
