@@ -78,6 +78,7 @@ class Discriminator(nn.Module):
     def forward(self, c, h_pl, h_mi, s_bias1=None, s_bias2=None):
         c_x = c
         print("h_pl.shape:{}".format(h_pl.shape))
+        print("h_mi.shape:{}".format(h_pl.shape))
         print("c_x.shape:{}".format(c_x.shape))
         sc_1 = torch.squeeze(self.f_k(h_pl, c_x))
         sc_2 = torch.squeeze(self.f_k(h_mi, c_x))
