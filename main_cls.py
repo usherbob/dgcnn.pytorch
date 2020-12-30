@@ -152,7 +152,7 @@ def train(args, io):
                 batch_size = data.size()[0]
                 logits, ret, nodes1 = model(data)
                 loss_cls = criterion(logits, label)
-                loss_mi = mi_loss(ret, data)
+                loss_mi = mi_loss(ret)
                 loss = loss_cls + loss_mi
                 preds = logits.max(dim=1)[1]
                 count += batch_size
