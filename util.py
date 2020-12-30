@@ -15,9 +15,9 @@ import torch.nn.functional as F
 def mi_loss(ret):
     N = ret.shape[1] // 2
     device = ret.device
-    lbl_t_s1 = torch.ones(N)
-    lbl_f_s1 = torch.zeros(N)
-    milbl_s1 = torch.cat((lbl_t_s1, lbl_f_s1), 0).to(device)
+    lbl_t_s1 = torch.ones(ret.shape[0], N)
+    lbl_f_s1 = torch.zeros(ret.shape[0], N)
+    milbl_s1 = torch.cat((lbl_t_s1, lbl_f_s1), 1).to(device)
     loss = F.binary_cross_entropy_with_logits(ret, milbl_s1)
     return loss
 
