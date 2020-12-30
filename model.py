@@ -88,7 +88,7 @@ class Discriminator(nn.Module):
             sc_2 += s_bias2
         logits = torch.cat((sc_1, sc_2), 1).squeeze(-1)
         v = logits.shape[0]
-        return logits, logits[:, v//2]
+        return logits, logits[:, :v//2]
 
 
 class EdgeConv(nn.Module):
@@ -121,7 +121,7 @@ class IndexSelect(nn.Module):
 
     def forward(self, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
-        seq2 = seq1[:, :, torch.randperm(seq1.shape[1])]  # negative sampling
+        seq2 = seq1[:, :, torch.randperm(seq1.shape[-1])]  # negative sampling
         h_1 = self.fc(seq1)
         h_2 = self.fc(seq2)
         h_n1 = self.center(h_1)
