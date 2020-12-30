@@ -116,7 +116,7 @@ class IndexSelect(nn.Module):
         self.disc = Discriminator(n_h)
         self.center = EdgeConv(20, n_h, n_h)
 
-    def forward(self, seq1, samp_bias1=None, samp_bias2=None):
+    def forward(self, xyz, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
         seq2 = seq1[:, :, torch.randperm(seq1.shape[-1])]  # negative sampling
         h_1 = self.fc(seq1)
@@ -134,10 +134,13 @@ class IndexSelect(nn.Module):
 
         seq_idx = idx.unsqueeze(2).repeat(1, 1, seq1.shape[1])
         seq_idx = seq_idx.permute(0, 2, 1)
-        seq_static = seq1.gather(2, seq_idx)  # Bx3xnpoint
+        seq_static = seq1.gather(2, seq_idx)  # BxCxnpoint
         print("shape of seq_static: {}".format(seq_static.shape))
         seq = torch.mul(seq_static, values.unsqueeze(dim=1))
-        return seq, values, idx, ret
+        xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
+        xyz_idx = xyz_idx.permute(0, 2, 1)
+        xyz_static = xyz.gather(2, xyz_idx)  # Bx3xnpoint
+        return seq, values, idx, ret, xyz_static
 
 
 class PointNet(nn.Module):
@@ -164,7 +167,7 @@ class PointNet(nn.Module):
         self.linear2 = nn.Linear(512, output_channels)
 
         self.pool1 = IndexSelect(256, 64)
-        self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
+        # self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
         xyz = copy.deepcopy(x)
@@ -172,7 +175,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        x, values, idx, ret = self.pool1(x)
+        x, values, idx, ret, nodes1 = self.pool1(xyz, x)
         # node_features_agg = aggregate(xyz, node1, x, 10)
         # x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -184,7 +187,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
-        return x, ret
+        return x, ret, nodes1
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):
