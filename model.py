@@ -88,7 +88,7 @@ class Discriminator(nn.Module):
         return logits, logits[:, v//2]
 
 
-class EdgeConv():
+class EdgeConv(nn.Module):
     def __init__(self, k, in_dim, out_dim):
         super().__init__()
         self.k = k
