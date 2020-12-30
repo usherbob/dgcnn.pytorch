@@ -81,7 +81,8 @@ class Discriminator(nn.Module):
         print("h_mi.shape:{}".format(h_pl.shape))
         print("c_x.shape:{}".format(c_x.shape))
         sc_1 = torch.squeeze(self.f_k(h_pl, c_x))
-        sc_2 = torch.squeeze(self.f_k(h_mi, c_x))
+        sc_2 = torch.squeeze(self.f_k(h_pl, c_x))
+        # sc_2 = torch.squeeze(self.f_k(h_mi, c_x))
         if s_bias1 is not None:
             sc_1 += s_bias1
         if s_bias2 is not None:
