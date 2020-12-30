@@ -146,7 +146,7 @@ class PointNet(nn.Module):
         self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
         self.conv2_m = nn.Conv1d(64, args.emb_dims, kernel_size=1, bias=False)
-        self.conv3 = nn.Conv1d(64, 128, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
         self.conv4 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
         self.conv5 = nn.Conv1d(128, args.emb_dims, kernel_size=1, bias=False)
 
@@ -171,9 +171,9 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        x, values, idx, ret, nodes1 = self.pool1(xyz, x)
-        # node_features_agg = aggregate(xyz, node1, x, 10)
-        # x = torch.cat((node_features_1, node_features_agg), dim=1)
+        x, values, idx, ret, node1 = self.pool1(xyz, x)
+        node_features_agg = aggregate(xyz, node1, x, 10)
+        x = torch.cat((x, node_features_agg), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
@@ -183,7 +183,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
-        return x, ret, nodes1
+        return x, ret, node1
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):
