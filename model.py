@@ -95,7 +95,7 @@ class EdgeConv():
         self.conv = nn.Sequential(nn.Conv2d(in_dim, out_dim, kernel_size=1, bias=False),
                                   nn.BatchNorm2d(out_dim),
                                   nn.LeakyReLU(negative_slope=0.2))
-    def forward(x):
+    def forward(self, x):
         x = get_graph_feature(x, k=self.k)
         x = self.conv(x)
         x = x.max(dim=-1, keepdim=False)[0]
@@ -110,7 +110,7 @@ class IndexSelect(nn.Module):
         super().__init__()
         self.k = k
         self.sigm = nn.Sigmoid()
-        self.fc = nn.Sequential(nn.Conv1d(n_h, n_h),
+        self.fc = nn.Sequential(nn.Conv1d(n_h, n_h, kernel_size=1),
                                 nn.BatchNorm1d(n_h),
                                 nn.ReLU())
         self.disc = Discriminator(n_h)
