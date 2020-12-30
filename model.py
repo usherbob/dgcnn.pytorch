@@ -121,12 +121,12 @@ class IndexSelect(nn.Module):
     def forward(self, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
         seq2 = seq1[:, :, torch.randperm(seq1.shape[1])]  # negative sampling
-        h_1 = self.fc(seq1.permute(0, 2, 1))
-        h_2 = self.fc(seq2.permute(0, 2, 1))
+        h_1 = self.fc(seq1)
+        h_2 = self.fc(seq2)
         h_n1 = self.center(h_1)
 
         X = self.sigm(h_n1)
-        ret, ret_true = self.disc(X, h_1, h_2, samp_bias1, samp_bias2)
+        ret, ret_true = self.disc(X, h_1.permute(0, 2, 1), h_2.permute(0, 2, 1), samp_bias1, samp_bias2)
         scores = self.sigm(ret_true).squeeze()
         # num_nodes = h_1.shape[1]
         values, idx = torch.topk(scores, self.k, dim=1)
