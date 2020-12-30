@@ -125,13 +125,17 @@ class IndexSelect(nn.Module):
 
         X = self.sigm(h_n1)
         ret, ret_true = self.disc(X.permute(0, 2, 1).contiguous(), h_1.permute(0, 2, 1).contiguous(), h_2.permute(0, 2, 1).contiguous(), samp_bias1, samp_bias2)
+        print("shape of ret: {}".format(ret.shape))
+        print("shape of ret_true: {}".format(ret_true.shape))
         scores = self.sigm(ret_true).squeeze()
         # num_nodes = h_1.shape[1]
         values, idx = torch.topk(scores, self.k, dim=1)
+        print("shape of values: {}".format(values.shape))
 
         seq_idx = idx.unsqueeze(2).repeat(1, 1, seq1.shape[1])
         seq_idx = seq_idx.permute(0, 2, 1)
         seq_static = seq1.gather(2, seq_idx)  # Bx3xnpoint
+        print("shape of seq_static: {}".format(seq_static.shape))
         seq = torch.mul(seq_static, values)
         return seq, values, idx, ret
 
