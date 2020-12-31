@@ -90,6 +90,7 @@ def train(args, io):
         ####################
         train_loss = 0.0
         train_mi_loss = 0.0
+        train_cd_loss = 0.0
         train_cls_loss = 0.0
         count = 0.0
         model.train()
@@ -100,10 +101,11 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, ret, nodes1 = model(data)
+            logits, ret, node1, _ = model(data)
             loss_cls = criterion(logits, label)
             loss_mi = mi_loss(ret)
-            loss = loss_cls + loss_mi
+            loss_cd = compute_chamfer_distance(node1, data)
+            loss = loss_cls + loss_mi + loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -111,6 +113,7 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
             train_mi_loss += loss_mi.item() * batch_size
+            train_cd_loss += loss_cd.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
         if args.scheduler == 'cos':
@@ -124,11 +127,12 @@ def train(args, io):
 
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_mi: %.6f, train acc: %.6f, train avg acc: %.6f' \
+        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_mi: %.6f, loss_mi: %.6f, train acc: %.6f, train avg acc: %.6f' \
                                                                                  % (epoch,
                                                                                     train_loss * 1.0 / count,
                                                                                     train_cls_loss * 1.0 / count,
                                                                                     train_mi_loss * 1.0 / count,
+                                                                                    train_cd_loss * 1.0 / count,
                                                                                     metrics.accuracy_score(
                                                                                         train_true, train_pred),
                                                                                     metrics.balanced_accuracy_score(
@@ -140,6 +144,7 @@ def train(args, io):
         ####################
         test_loss = 0.0
         test_mi_loss = 0.0
+        test_cd_loss = 0.0
         test_cls_loss = 0.0
         count = 0.0
         model.eval()
@@ -150,26 +155,29 @@ def train(args, io):
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits, ret, nodes1 = model(data)
+                logits, ret, node1, _ = model(data)
                 loss_cls = criterion(logits, label)
                 loss_mi = mi_loss(ret)
-                loss = loss_cls + loss_mi
+                loss_cd = compute_chamfer_distance(node1, data)
+                loss = loss_cls + loss_mi + loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
                 test_mi_loss += loss_mi.item() * batch_size
+                test_cd_loss += loss_cd.item() * batch_size
                 test_true.append(label.cpu().numpy())
                 test_pred.append(preds.detach().cpu().numpy())
         test_true = np.concatenate(test_true)
         test_pred = np.concatenate(test_pred)
         test_acc = metrics.accuracy_score(test_true, test_pred)
         avg_per_class_acc = metrics.balanced_accuracy_score(test_true, test_pred)
-        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_mi: %.6f, test acc: %.6f, test avg acc: %.6f' \
+        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_mi: %.6f, loss_cd: %.6f, test acc: %.6f, test avg acc: %.6f' \
                                                                              % (epoch,
                                                                                 test_loss * 1.0 / count,
                                                                                 test_cls_loss * 1.0 / count,
                                                                                 test_mi_loss * 1.0 / count,
+                                                                                test_cd_loss * 1.0 / count,
                                                                                 test_acc,
                                                                                 avg_per_class_acc)
         io.cprint(outstr)
@@ -202,14 +210,14 @@ def test(args, io):
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
-        logits, ret, node1 = model(data)
+        logits, ret, node1, node1_static = model(data)
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
                 np.save('/opt/data/private/bob/ckpt/cls/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/bob/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
+                np.save('/opt/data/private/bob/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1_static[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)

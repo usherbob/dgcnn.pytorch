@@ -136,7 +136,8 @@ class IndexSelect(nn.Module):
         xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
         xyz_idx = xyz_idx.permute(0, 2, 1)
         xyz_static = xyz.gather(2, xyz_idx)  # Bx3xnpoint
-        return seq, values, idx, ret, xyz_static
+        xyz = torch.mul(xyz_static, values.unsqueeze(dim=1))
+        return seq, values, idx, ret, xyz_static, xyz
 
 
 class PointNet(nn.Module):
@@ -171,8 +172,8 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        node_features, values, idx, ret, node1 = self.pool1(xyz, x)
-        node_features_agg = aggregate(xyz, node1, x, 20)
+        node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x)
+        node_features_agg = aggregate(xyz, node1_static, x, 20)
         x = torch.cat((node_features, node_features_agg), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
@@ -183,7 +184,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
-        return x, ret, node1
+        return x, ret, node1, node1_static
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):
