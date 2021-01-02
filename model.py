@@ -356,7 +356,7 @@ class DGCNN_cls(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x)
+        node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x_t1_)
         # node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
         node_features_agg = aggregate(xyz, node1_static, x_t1_, self.k)
         x = torch.cat((node_features, node_features_agg), dim=1)
