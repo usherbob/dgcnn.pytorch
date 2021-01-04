@@ -127,7 +127,7 @@ def train(args, io):
 
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_mi: %.6f, loss_mi: %.6f, train acc: %.6f, train avg acc: %.6f' \
+        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_mi: %.6f, loss_cd: %.6f, train acc: %.6f, train avg acc: %.6f' \
                                                                                  % (epoch,
                                                                                     train_loss * 1.0 / count,
                                                                                     train_cls_loss * 1.0 / count,
