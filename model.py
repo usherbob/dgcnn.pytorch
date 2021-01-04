@@ -739,7 +739,7 @@ class DGCNN_partseg(nn.Module):
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
         # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
-        node_features_1, values, idx, ret, node1_static, node1 = self.pool1(xyz, x2)
+        node_feature_1, values, idx, ret, node1_static, node1 = self.pool1(xyz, x2)
         node_features_agg = aggregate(xyz, node1_static, x2, self.k//2)
         x = torch.cat((node_feature_1, node_features_agg), dim=1)      # (batch_size, 64, num_points//4) -> (batch_size, 128, num_points//4)
 
