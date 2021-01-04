@@ -106,7 +106,7 @@ class IndexSelect(nn.Module):
     '''
     key module of mutual information pooling
     '''
-    def __init__(self, k, n_h):
+    def __init__(self, k, n_h, nn=20):
         super().__init__()
         self.k = k
         self.sigm = nn.Sigmoid()
@@ -114,7 +114,7 @@ class IndexSelect(nn.Module):
                                 nn.BatchNorm1d(n_h),
                                 nn.ReLU())
         self.disc = Discriminator(n_h)
-        self.center = EdgeConv(20, n_h, n_h)
+        self.center = EdgeConv(nn, n_h, n_h)
 
     def forward(self, xyz, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
@@ -678,7 +678,8 @@ class DGCNN_partseg(nn.Module):
         self.bn11 = nn.BatchNorm1d(256)
         self.bn12 = nn.BatchNorm1d(128)
 
-        self.pool1 = Pool(self.args.num_points//4, 64, 0.2)
+        # self.pool1 = Pool(self.args.num_points//4, 64, 0.2)
+        self.pool1 = IndexSelect(256, 64, nn=self.k//2)
 
         self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
                                    self.bn1,
@@ -737,7 +738,8 @@ class DGCNN_partseg(nn.Module):
         x = self.conv4(x)                                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
-        node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
+        # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
+        node_features_1, values, idx, ret, node1_static, node1 = self.pool1(xyz, x2)
         node_features_agg = aggregate(xyz, node1_static, x2, self.k//2)
         x = torch.cat((node_feature_1, node_features_agg), dim=1)      # (batch_size, 64, num_points//4) -> (batch_size, 128, num_points//4)
 
@@ -778,8 +780,9 @@ class DGCNN_partseg(nn.Module):
         x = self.dp(x)
 
         x = self.conv13(x)                                  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
-        
-        return x, node1, node1_static
+
+        return x, ret, node1, node1_static
+        # return x, node1, node1_static
 
 
 class DGCNN_semseg(nn.Module):
