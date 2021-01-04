@@ -173,7 +173,7 @@ def train(args, io):
         train_ious = calculate_shape_IoU(train_pred_seg, train_true_seg, train_label_seg, args.class_choice)
         duration = time.time() - start
         outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, train acc: %.6f, ' \
-                 'train avg acc: %.6f, train iou: %.6f, time usage: %d'                         % (epoch,
+                 'train avg acc: %.6f, train iou: %.6f, time usage: %d s'                         % (epoch,
                                                                                                   train_loss*1.0/count,
                                                                                                   train_cls_loss*1.0/count,
                                                                                                   train_cd_loss*1.0/count,
