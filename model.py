@@ -106,7 +106,7 @@ class IndexSelect(nn.Module):
     '''
     key module of mutual information pooling
     '''
-    def __init__(self, k, n_h, nn=20):
+    def __init__(self, k, n_h, neighs=20):
         super().__init__()
         self.k = k
         self.sigm = nn.Sigmoid()
@@ -114,7 +114,7 @@ class IndexSelect(nn.Module):
                                 nn.BatchNorm1d(n_h),
                                 nn.ReLU())
         self.disc = Discriminator(n_h)
-        self.center = EdgeConv(nn, n_h, n_h)
+        self.center = EdgeConv(neighs, n_h, n_h)
 
     def forward(self, xyz, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
@@ -679,7 +679,7 @@ class DGCNN_partseg(nn.Module):
         self.bn12 = nn.BatchNorm1d(128)
 
         # self.pool1 = Pool(self.args.num_points//4, 64, 0.2)
-        self.pool1 = IndexSelect(256, 64, nn=self.k//2)
+        self.pool1 = IndexSelect(256, 64, neighs=self.k//2)
 
         self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
                                    self.bn1,
