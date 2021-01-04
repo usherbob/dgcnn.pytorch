@@ -10,6 +10,7 @@
 
 from __future__ import print_function
 import os
+import time
 import argparse
 import torch
 import torch.nn as nn
@@ -111,6 +112,7 @@ def train(args, io):
         ####################
         # Train
         ####################
+        start = time.time()
         train_loss = 0.0
         train_cd_loss = 0.0
         train_mi_loss = 0.0
@@ -169,14 +171,17 @@ def train(args, io):
         train_pred_seg = np.concatenate(train_pred_seg, axis=0)
         train_label_seg = np.concatenate(train_label_seg)
         train_ious = calculate_shape_IoU(train_pred_seg, train_true_seg, train_label_seg, args.class_choice)
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, train acc: %.6f, train avg acc: %.6f, train iou: %.6f' % (epoch,
+        duration = time.time() - start
+        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, train acc: %.6f, ' \
+                 'train avg acc: %.6f, train iou: %.6f, time usage: %d'                         % (epoch,
                                                                                                   train_loss*1.0/count,
                                                                                                   train_cls_loss*1.0/count,
                                                                                                   train_cd_loss*1.0/count,
                                                                                                   train_mi_loss*1.0/count,
                                                                                                   train_acc,
                                                                                                   avg_per_class_acc,
-                                                                                                  np.mean(train_ious))
+                                                                                                  np.mean(train_ious),
+                                                                                                  duration)
         io.cprint(outstr)
 
         ####################
@@ -184,6 +189,7 @@ def train(args, io):
         ####################
         test_loss = 0.0
         test_cd_loss = 0.0
+        test_mi_loss = 0.0
         test_cls_loss = 0.0
         count = 0.0
         model.eval()
@@ -229,7 +235,7 @@ def train(args, io):
         test_pred_seg = np.concatenate(test_pred_seg, axis=0)
         test_label_seg = np.concatenate(test_label_seg)
         test_ious = calculate_shape_IoU(test_pred_seg, test_true_seg, test_label_seg, args.class_choice)
-        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_cd: %.6f, test acc: %.6f, test avg acc: %.6f, test iou: %.6f' % (epoch,
+        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, test acc: %.6f, test avg acc: %.6f, test iou: %.6f' % (epoch,
                                                                                               test_loss*1.0/count,
                                                                                               test_cls_loss*1.0/count,
                                                                                               test_cd_loss*1.0/count,
