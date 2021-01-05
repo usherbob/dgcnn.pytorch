@@ -301,7 +301,7 @@ if __name__ == "__main__":
                         help='Model to use, [dgcnn]')
     parser.add_argument('--dataset', type=str, default='S3DIS', metavar='N',
                         choices=['S3DIS'])
-    parser.add_argument('--test_area', type=str, default=None, metavar='N',
+    parser.add_argument('--test_area', type=str, default='6', metavar='N',
                         choices=['1', '2', '3', '4', '5', '6', 'all'])
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
