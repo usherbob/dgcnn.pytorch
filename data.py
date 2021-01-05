@@ -136,10 +136,10 @@ def load_data_semseg(partition, test_area):
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     # download_S3DIS()
     prepare_test_data_semseg()
-    if partition == 'train':
-        data_dir = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data')
-    else:
-        data_dir = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data_test')
+    # if partition == 'train':
+    data_dir = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data')
+    # else:
+        # data_dir = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data_test')
     with open(os.path.join(data_dir, "all_files.txt")) as f:
         all_files = [line.rstrip() for line in f]
     with open(os.path.join(data_dir, "room_filelist.txt")) as f:
