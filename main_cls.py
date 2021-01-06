@@ -101,11 +101,14 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, ret, node1, _ = model(data)
+            logits, ret, node, _ = model(data)
             loss_cls = criterion(logits, label)
-            loss_mi = mi_loss(ret)
-            loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_mi + loss_cd
+            loss_mi = 0.0
+            for r in ret:
+                loss_mi += mi_loss(r)
+            loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
+                      compute_chamfer_distance(node[2], node[1])
+            loss = loss_cls + loss_mi #+ loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -155,11 +158,14 @@ def train(args, io):
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits, ret, node1, _ = model(data)
+                logits, ret, node, _ = model(data)
                 loss_cls = criterion(logits, label)
-                loss_mi = mi_loss(ret)
-                loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_mi + loss_cd
+                loss_mi = 0.0
+                for r in ret:
+                    loss_mi = mi_loss(r)
+                loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
+                          compute_chamfer_distance(node[2], node[1])
+                loss = loss_cls + loss_mi #+ loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -210,14 +216,16 @@ def test(args, io):
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
-        logits, ret, node1, node1_static = model(data)
+        logits, _, _, node_static = model(data)
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
                 np.save('/opt/data/private/ckpt/cls/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1_static[i, :, :].detach().cpu().numpy())
+                np.save('/opt/data/private/ckpt/cls/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node_static[0][i, :, :].detach().cpu().numpy())
+                np.save('/opt/data/private/ckpt/cls/%s/visu/node2_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node_static[1][i, :, :].detach().cpu().numpy())
+                np.save('/opt/data/private/ckpt/cls/%s/visu/node3_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node_static[2][i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)

@@ -146,45 +146,86 @@ class PointNet(nn.Module):
         self.args = args
         self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
-        self.conv2_m = nn.Conv1d(64, args.emb_dims, kernel_size=1, bias=False)
+        self.conv2_m = nn.Conv1d(64, args.emb_dims//2, kernel_size=1, bias=False)
         self.conv3 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
         self.conv4 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
-        self.conv5 = nn.Conv1d(128, args.emb_dims, kernel_size=1, bias=False)
+        self.conv4_m = nn.Conv1d(128, args.emb_dims//2, kernel_size=1, bias=False)
+        self.conv5 = nn.Conv1d(256, 256, kernel_size=1, bias=False)
+        self.conv6 = nn.Conv1d(256, 256, kernel_size=1, bias=False)
+        self.conv6_m = nn.Conv1d(256, args.emb_dims//2, kernel_size=1, bias=False)
+        self.conv7 = nn.Conv1d(512, 512, kernel_size=1, bias=False)
+        self.conv8 = nn.Conv1d(512, 512, kernel_size=1, bias=False)
 
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(64)
-        self.bn2_m = nn.BatchNorm1d(args.emb_dims)
+        self.bn2_m = nn.BatchNorm1d(args.emb_dims//2)
         self.bn3 = nn.BatchNorm1d(128)
         self.bn4 = nn.BatchNorm1d(128)
-        self.bn5 = nn.BatchNorm1d(args.emb_dims)
+        self.bn4_m = nn.BatchNorm1d(args.emb_dims//2)
+        self.bn5 = nn.BatchNorm1d(256)
+        self.bn6 = nn.BatchNorm1d(256)
+        self.bn6_m = nn.BatchNorm1d(args.emb_dims//2)
+        self.bn7 = nn.BatchNorm1d(512)
+        self.bn8 = nn.BatchNorm1d(512)
 
         self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
-        self.bn6 = nn.BatchNorm1d(512)
+        self.lbn1 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = IndexSelect(256, 64)
+        self.pool1 = IndexSelect(256, 64, neighs=20)
+        self.pool2 = IndexSelect(64, 128, neighs=10)
+        self.pool1 = IndexSelect(16, 256, neighs=5)
         # self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
+        ret = []
+        node = []
+        node_static = []
         xyz = copy.deepcopy(x)
         x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
+        x = F.relu(self.bn2(self.conv2(x)))                                         #(batch_size, 64, num_points)
+        x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))                                  #(batch_size, 512, num_points)
 
-        node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x)
+        node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x)
         node_features_agg = aggregate(xyz, node1_static, x, 20)
-        x = torch.cat((node_features, node_features_agg), dim=1)
+        x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 128, num_points//4)
 
         x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.bn4(self.conv4(x)))
-        x_t2 = F.relu(self.bn5(self.conv5(x)))
+        x = F.relu(self.bn4(self.conv4(x)))                                         #(batch_size, 128, num_points//4)
+        x_t2 = F.relu(self.bn4_m(self.conv4_m(x)))                                  #(batch_size, 512, num_points//4)
 
-        x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
-        x = F.relu(self.bn6(self.linear1(x)))
+        node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x)
+        node_features_agg = aggregate(node1_static, node2_static, x, 10)
+        x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 256, num_points//16)
+
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = F.relu(self.bn6(self.conv6(x)))                                         #(batch_size, 256, num_points//16)
+        x_t3 = F.relu(self.bn6_m(self.conv6_m(x)))                                  #(batch_size, 512, num_points//16)
+
+        node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x)
+        node_features_agg = aggregate(node2_static, node3_static, x, 5)
+        x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 512, num_points//64)
+
+        x = F.relu(self.bn7(self.conv7(x)))
+        x_t4 = F.relu(self.bn8(self.conv8(x)))                                      #(batch_size, 512, num_points//64)
+
+        x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze(),
+                       F.adaptive_max_pool1d(x_t3, 1).squeeze(), F.adaptive_max_pool1d(x_t4, 1).squeeze(),), dim=1)
+        x = F.relu(self.lbn1(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
-        return x, ret, node1, node1_static
+
+        ret.append(ret1)
+        ret.append(ret2)
+        ret.append(ret3)
+        node.append(node1)
+        node.append(node2)
+        node.append(node3)
+        node_static.append(node1_static)
+        node_static.append(node2_static)
+        node_static.append(node3_static)
+        return x, ret, node, node_static
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):

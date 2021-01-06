@@ -160,6 +160,7 @@ def train(args, io):
         ####################
         test_loss = 0.0
         test_cd_loss = 0.0
+        test_mi_loss = 0.0
         test_cls_loss = 0.0
         count = 0.0
         model.eval()
