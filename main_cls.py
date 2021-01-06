@@ -63,6 +63,9 @@ def train(args, io):
     print(str(model))
 
     model = nn.DataParallel(model)
+    if args.model_path != "":
+        model.load_state_dict(torch.load(args.model_path))
+        print("Load pretrained model from " + args.model_path)
     print("Let's use", torch.cuda.device_count(), "GPUs!")
 
     if args.use_sgd:
