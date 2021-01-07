@@ -155,7 +155,7 @@ class PointNet(nn.Module):
         self.conv6_m = nn.Conv1d(256, args.emb_dims, kernel_size=1, bias=False)
         self.conv7 = nn.Conv1d(512, 512, kernel_size=1, bias=False)
         self.conv8 = nn.Conv1d(512, 512, kernel_size=1, bias=False)
-        self.conv6_m = nn.Conv1d(512, args.emb_dims, kernel_size=1, bias=False)
+        self.conv8_m = nn.Conv1d(512, args.emb_dims, kernel_size=1, bias=False)
 
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(64)
