@@ -111,7 +111,7 @@ def train(args, io):
                 loss_mi += mi_loss(r)
             loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
                       compute_chamfer_distance(node[2], node[1])
-            loss = loss_cls + loss_mi #+ loss_cd
+            loss = loss_cls + loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -168,7 +168,7 @@ def train(args, io):
                     loss_mi = mi_loss(r)
                 loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
                           compute_chamfer_distance(node[2], node[1])
-                loss = loss_cls + loss_mi #+ loss_cd
+                loss = loss_cls + loss_mi + args.cd_weights * loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
