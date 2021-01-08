@@ -170,7 +170,7 @@ class PointNet(nn.Module):
         self.bn8 = nn.BatchNorm1d(512)
         # self.bn8_m = nn.BatchNorm1d(args.emb_dims)
 
-        self.linear1 = nn.Linear(args.emb_dims*4, 512, bias=False)
+        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
         self.lbn1 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
