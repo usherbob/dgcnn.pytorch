@@ -175,9 +175,9 @@ class PointNet(nn.Module):
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = IndexSelect(256, 64, neighs=20)
-        self.pool2 = IndexSelect(64, 128, neighs=10)
-        self.pool3 = IndexSelect(16, 256, neighs=5)
+        self.pool1 = IndexSelect(256, 64, neighs=40)
+        self.pool2 = IndexSelect(64, 128, neighs=20)
+        self.pool3 = IndexSelect(16, 256, neighs=10)
         # self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
@@ -190,7 +190,7 @@ class PointNet(nn.Module):
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))                                  #(batch_size, 512, num_points)
 
         node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x)
-        node_features_agg = aggregate(xyz, node1_static, x, 20)
+        node_features_agg = aggregate(xyz, node1_static, x, 40)
         x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 128, num_points//4)
 
         x = F.relu(self.bn3(self.conv3(x)))
@@ -198,7 +198,7 @@ class PointNet(nn.Module):
         x_t2 = F.relu(self.bn4_m(self.conv4_m(x)))                                  #(batch_size, 512, num_points//4)
 
         node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x)
-        node_features_agg = aggregate(node1_static, node2_static, x, 10)
+        node_features_agg = aggregate(node1_static, node2_static, x, 20)
         x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 256, num_points//16)
 
         x = F.relu(self.bn5(self.conv5(x)))
@@ -206,7 +206,7 @@ class PointNet(nn.Module):
         x_t3 = F.relu(self.bn6_m(self.conv6_m(x)))                                  #(batch_size, 512, num_points//16)
 
         node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x)
-        node_features_agg = aggregate(node2_static, node3_static, x, 5)
+        node_features_agg = aggregate(node2_static, node3_static, x, 10)
         x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 512, num_points//64)
 
         x = F.relu(self.bn7(self.conv7(x)))
