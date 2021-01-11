@@ -194,7 +194,7 @@ class PointNet(nn.Module):
         x_p1 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 128, num_points//4)
 
         x2 = F.relu(self.bn3(self.conv3(x_p1)))
-        x2 = F.relu(self.bn4(self.conv4(x2)))                                            #(batch_size, 128, num_points//4)
+        x2 = self.bn4(self.conv4(x2))                                            #(batch_size, 128, num_points//4)
         x2 = F.relu(x2 + x_p1)
         x_t2 = F.relu(self.bn4_m(self.conv4_m(x2)))                                     #(batch_size, 512, num_points//4)
 
@@ -203,7 +203,7 @@ class PointNet(nn.Module):
         x_p2 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 256, num_points//16)
 
         x3 = F.relu(self.bn5(self.conv5(x_p2)))
-        x3 = F.relu(self.bn6(self.conv6(x3)))                                            #(batch_size, 256, num_points//16)
+        x3 = self.bn6(self.conv6(x3))                                            #(batch_size, 256, num_points//16)
         x3 = F.relu(x3 + x_p2)
         x_t3 = F.relu(self.bn6_m(self.conv6_m(x3)))                                     #(batch_size, 512, num_points//16)
 
@@ -212,7 +212,7 @@ class PointNet(nn.Module):
         x_p3 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 512, num_points//64)
 
         x4 = F.relu(self.bn7(self.conv7(x_p3)))
-        x4 = F.relu(self.bn8(self.conv8(x4)))
+        x4 = self.bn8(self.conv8(x4))
         x_t4 = F.relu(x4 + x_p3)
 
         x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze(),
