@@ -186,30 +186,30 @@ class PointNet(nn.Module):
         node_static = []
         xyz = copy.deepcopy(x)
         x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))                                         #(batch_size, 64, num_points)
+        x1 = F.relu(self.bn2(self.conv2(x)))                                         #(batch_size, 64, num_points)
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))                                  #(batch_size, 512, num_points)
 
-        node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x)
+        node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
         node_features_agg = aggregate(xyz, node1_static, x, 40)
         x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 128, num_points//4)
 
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.bn4(self.conv4(x)))                                         #(batch_size, 128, num_points//4)
+        x = F.relu(self.bn3(self.conv3(x + x1)))
+        x2 = F.relu(self.bn4(self.conv4(x)))                                         #(batch_size, 128, num_points//4)
         x_t2 = F.relu(self.bn4_m(self.conv4_m(x)))                                  #(batch_size, 512, num_points//4)
 
-        node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x)
+        node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
         node_features_agg = aggregate(node1_static, node2_static, x, 20)
         x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 256, num_points//16)
 
-        x = F.relu(self.bn5(self.conv5(x)))
-        x = F.relu(self.bn6(self.conv6(x)))                                         #(batch_size, 256, num_points//16)
+        x = F.relu(self.bn5(self.conv5(x + x2)))
+        x3 = F.relu(self.bn6(self.conv6(x)))                                         #(batch_size, 256, num_points//16)
         x_t3 = F.relu(self.bn6_m(self.conv6_m(x)))                                  #(batch_size, 512, num_points//16)
 
-        node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x)
+        node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
         node_features_agg = aggregate(node2_static, node3_static, x, 10)
         x = torch.cat((node_features, node_features_agg), dim=1)                    #(batch_size, 512, num_points//64)
 
-        x = F.relu(self.bn7(self.conv7(x)))
+        x = F.relu(self.bn7(self.conv7(x + x3)))
         x_t4 = F.relu(self.bn8(self.conv8(x)))                                      #(batch_size, 512, num_points//64)
         # x_t4 = F.relu(self.bn8_m(self.conv8_m(x)))                                  #(batch_size, 512, num_points//16)
 

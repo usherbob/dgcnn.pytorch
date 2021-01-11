@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="AIMAX">
+    <serverData>
+      <paths name="AIMAX">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/code/dgcnn.pytorch" local="$PROJECT_DIR$" web="/code/dgcnn.pytorch" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
