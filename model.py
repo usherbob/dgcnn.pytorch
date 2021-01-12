@@ -182,7 +182,7 @@ class PointNet(nn.Module):
         self.pool1 = IndexSelect(256, 64, neighs=40)
         self.pool2 = IndexSelect(64, 128, neighs=20)
         self.pool3 = IndexSelect(16, 256, neighs=10)
-        self.pool3 = IndexSelect(4, 512, neighs=10)
+        self.pool4 = IndexSelect(4, 512, neighs=10)
         # self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
