@@ -110,7 +110,7 @@ def train(args, io):
             for r in ret:
                 loss_mi += mi_loss(r)
             loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
-                      compute_chamfer_distance(node[2], node[1]) + compute_chamfer_distance(node[3], node[2])
+                      compute_chamfer_distance(node[2], node[1])
             loss = loss_cls + loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
