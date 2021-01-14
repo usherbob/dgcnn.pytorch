@@ -28,7 +28,7 @@ seg_num = [4, 2, 2, 4, 4, 3, 3, 2, 4, 2, 6, 2, 3, 3, 3, 3]
 index_start = [0, 4, 6, 8, 12, 16, 19, 22, 24, 28, 30, 36, 38, 41, 44, 47]
 
 def _init_():
-    ckpt_dir = '/opt/data/private/ckpt/partseg'
+    ckpt_dir = BASE_DIR+'/ckpt/partseg'
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir+'/'+args.exp_name):
@@ -246,7 +246,7 @@ def train(args, io):
         io.cprint(outstr)
         if np.mean(test_ious) >= best_test_iou:
             best_test_iou = np.mean(test_ious)
-            torch.save(model.state_dict(), '/opt/data/private/ckpt/partseg/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), BASE_DIR+'/ckpt/partseg/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
@@ -293,14 +293,14 @@ def test(args, io):
         test_label_seg.append(label.reshape(-1))
         if args.visu and batch_count % 5 == 0:
             for i in range(data.shape[0]):
-                np.save('/opt/data/private/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         data[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
                         node1_static[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/ckpt/partseg/%s/visu/node2_%04d.npy' % (
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%04d.npy' % (
                 args.exp_name, batch_count * args.test_batch_size + i),
                         node2_static[i, :, :].detach().cpu().numpy())
-                np.save('/opt/data/private/ckpt/partseg/%s/visu/node3_%04d.npy' % (
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%04d.npy' % (
                 args.exp_name, batch_count * args.test_batch_size + i),
                         node3_static[i, :, :].detach().cpu().numpy())
 
@@ -321,6 +321,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Part Segmentation')
+    parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
+                        help='Path to data and ckpt')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
@@ -369,7 +371,8 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream('/opt/data/private/ckpt/partseg/' + args.exp_name + '/run.log')
+    BASE_DIR = args.base_dir
+    io = IOStream(BASE_DIR+'/ckpt/partseg/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

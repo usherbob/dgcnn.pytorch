@@ -26,14 +26,14 @@ import sklearn.metrics as metrics
 
 
 def _init_():
-    if not os.path.exists('/opt/data/private/ckpt/semseg'):
-        os.makedirs('/opt/data/private/ckpt/semseg')
-    if not os.path.exists('/opt/data/private/ckpt/semseg/'+args.exp_name):
-        os.makedirs('/opt/data/private/ckpt/semseg/'+args.exp_name)
-    if not os.path.exists('/opt/data/private/ckpt/semseg/'+args.exp_name+'/'+'models'):
-        os.makedirs('/opt/data/private/ckpt/semseg/'+args.exp_name+'/'+'models')
-    if not os.path.exists('/opt/data/private/ckpt/semseg/'+args.exp_name+'/'+'visu'):
-        os.makedirs('/opt/data/private/ckpt/semseg/'+args.exp_name+'/'+'visu')
+    if not os.path.exists(BASE_DIR+'/ckpt/semseg'):
+        os.makedirs(BASE_DIR+'/ckpt/semseg')
+    if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name):
+        os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name)
+    if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'models'):
+        os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'models')
+    if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'visu'):
+        os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'visu')
     os.system('cp main_semseg.py /opt/data/private/ckpt/semseg'+'/'+args.exp_name+'/'+'main_semseg.py.backup')
     os.system('cp model.py /opt/data/private/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py /opt/data/private/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
@@ -209,7 +209,7 @@ def train(args, io):
         io.cprint(outstr)
         if np.mean(test_ious) >= best_test_iou:
             best_test_iou = np.mean(test_ious)
-            torch.save(model.state_dict(), '/opt/data/private/ckpt/semseg/%s/models/model_%s.t7' % (args.exp_name, args.test_area))
+            torch.save(model.state_dict(), BASE_DIR+'/ckpt/semseg/%s/models/model_%s.t7' % (args.exp_name, args.test_area))
 
 
 def test(args, io):
@@ -254,10 +254,10 @@ def test(args, io):
                 test_pred_seg.append(pred_np)
                 if args.visu and batch_count % 5 == 0:
                     for i in range(data.shape[0]):
-                        np.save('/opt/data/private/ckpt/semseg/%s/visu/node0_%04d.npy' % (
+                        np.save(BASE_DIR+'/ckpt/semseg/%s/visu/node0_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 data[i, -3:, :].detach().cpu().numpy())
-                        np.save('/opt/data/private/ckpt/semseg/%s/visu/node1_%04d.npy' % (
+                        np.save(BASE_DIR+'/ckpt/semseg/%s/visu/node1_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node1_static[i, :, :].detach().cpu().numpy())
 
@@ -295,6 +295,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Part Segmentation')
+    parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
+                        help='Path to data and ckpt')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
@@ -341,7 +343,8 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream('/opt/data/private/ckpt/semseg/' + args.exp_name + '/run.log')
+    BASE_DIR = args.base_dir
+    io = IOStream(BASE_DIR+'/ckpt/semseg/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
