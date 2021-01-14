@@ -592,7 +592,7 @@ class DGCNN_partseg(nn.Module):
         self.conv3_p = nn.Sequential(nn.Conv1d(64 * 2, 64, kernel_size=1, bias=False),
                                      self.bn3_p,
                                      nn.LeakyReLU(negative_slope=0.2))
-        self.conv6 = nn.Sequential(nn.Conv2d(64*2*2, 64, kernel_size=1, bias=False),
+        self.conv6 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn6,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv6_m = nn.Sequential(nn.Conv1d(64*4, args.emb_dims, kernel_size=1, bias=False),
