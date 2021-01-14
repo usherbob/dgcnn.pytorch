@@ -22,122 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-
-
-def knn(x, k):
-    inner = -2*torch.matmul(x.transpose(2, 1), x)
-    xx = torch.sum(x**2, dim=1, keepdim=True)
-    pairwise_distance = -xx - inner - xx.transpose(2, 1)
- 
-    idx = pairwise_distance.topk(k=k, dim=-1)[1]   # (batch_size, num_points, k)
-    return idx
-
-
-def get_graph_feature(x, k=20, idx=None, dim9=False):
-    batch_size = x.size(0)
-    num_points = x.size(2)
-    x = x.view(batch_size, -1, num_points)
-    if idx is None:
-        if dim9 == False:
-            idx = knn(x, k=k)   # (batch_size, num_points, k)
-        else:
-            idx = knn(x[:, 6:], k=k)
-    device = torch.device('cuda')
-
-    idx_base = torch.arange(0, batch_size, device=device).view(-1, 1, 1)*num_points
-
-    idx = idx + idx_base
-
-    idx = idx.view(-1)
- 
-    _, num_dims, _ = x.size()
-
-    x = x.transpose(2, 1).contiguous()   # (batch_size, num_points, num_dims)  -> (batch_size*num_points, num_dims) #   batch_size * num_points * k + range(0, batch_size*num_points)
-    feature = x.view(batch_size*num_points, -1)[idx, :]
-    feature = feature.view(batch_size, num_points, k, num_dims) 
-    x = x.view(batch_size, num_points, 1, num_dims).repeat(1, 1, k, 1)
-    
-    feature = torch.cat((feature-x, x), dim=3).permute(0, 3, 1, 2).contiguous()
-  
-    return feature      # (batch_size, 2*num_dims, num_points, k)
-
-
-class Discriminator(nn.Module):
-    def __init__(self, n_h):
-        super().__init__()
-        self.f_k = nn.Bilinear(n_h, n_h, 1)
-        for m in self.modules():
-            self.weights_init(m)
-
-    def weights_init(self, m):
-        if isinstance(m, nn.Bilinear):
-            torch.nn.init.xavier_uniform_(m.weight.data)
-            if m.bias is not None:
-                m.bias.data.fill_(0.0)
-
-    def forward(self, c, h_pl, h_mi, s_bias1=None, s_bias2=None):
-        c_x = c
-        sc_1 = torch.squeeze(self.f_k(h_pl, c_x))
-        sc_2 = torch.squeeze(self.f_k(h_mi, c_x))
-        if s_bias1 is not None:
-            sc_1 += s_bias1
-        if s_bias2 is not None:
-            sc_2 += s_bias2
-        logits = torch.cat((sc_1, sc_2), 1).squeeze(-1)
-        v = logits.shape[1]
-        return logits, logits[:, :v//2]
-
-
-class EdgeConv(nn.Module):
-    def __init__(self, k, in_dim, out_dim):
-        super().__init__()
-        self.k = k
-        self.conv = nn.Sequential(nn.Conv2d(in_dim*2, out_dim, kernel_size=1, bias=False),
-                                  nn.BatchNorm2d(out_dim),
-                                  nn.LeakyReLU(negative_slope=0.2))
-    def forward(self, x):
-        x = get_graph_feature(x, k=self.k)
-        x = self.conv(x)
-        x = x.max(dim=-1, keepdim=False)[0]
-        return x
-
-
-class IndexSelect(nn.Module):
-    '''
-    key module of mutual information pooling
-    '''
-    def __init__(self, k, n_h, neighs=20):
-        super().__init__()
-        self.k = k
-        self.sigm = nn.Sigmoid()
-        self.fc = nn.Sequential(nn.Conv1d(n_h, n_h, kernel_size=1),
-                                nn.BatchNorm1d(n_h),
-                                nn.ReLU())
-        self.disc = Discriminator(n_h)
-        self.center = EdgeConv(neighs, n_h, n_h)
-
-    def forward(self, xyz, seq1, samp_bias1=None, samp_bias2=None):
-        # seq2 = torch.zeros_like(seq1)
-        seq2 = seq1[:, :, torch.randperm(seq1.shape[-1])]  # negative sampling
-        h_1 = self.fc(seq1)
-        h_2 = self.fc(seq2)
-        h_n1 = self.center(h_1)
-
-        X = self.sigm(h_n1)
-        ret, ret_true = self.disc(X.permute(0, 2, 1).contiguous(), h_1.permute(0, 2, 1).contiguous(), h_2.permute(0, 2, 1).contiguous(), samp_bias1, samp_bias2)
-        scores = self.sigm(ret_true).squeeze()
-        # num_nodes = h_1.shape[1]
-        values, idx = torch.topk(scores, self.k, dim=1)
-
-        seq_idx = idx.unsqueeze(2).repeat(1, 1, seq1.shape[1])
-        seq_idx = seq_idx.permute(0, 2, 1)
-        seq_static = seq1.gather(2, seq_idx)  # BxCxnpoint
-        seq = torch.mul(seq_static, values.unsqueeze(dim=1))
-        xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
-        xyz_idx = xyz_idx.permute(0, 2, 1)
-        xyz_static = xyz.gather(2, xyz_idx)  # Bx3xnpoint
-        xyz = torch.mul(xyz_static, values.unsqueeze(dim=1))
-        return seq, values, idx, ret, xyz_static, xyz
+from util import knn, get_graph_feature, unpool, aggregate, Discriminator, EdgeConv, IndexSelect
 
 
 class PointNet(nn.Module):
@@ -653,153 +538,6 @@ class DGCNN_scan(nn.Module):
         return logits_cls, logits_seg, node1, node1_static
 
 
-class Transform_Net(nn.Module):
-    def __init__(self, args):
-        super(Transform_Net, self).__init__()
-        self.args = args
-        self.k = 3
-
-        self.bn1 = nn.BatchNorm2d(64)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.bn3 = nn.BatchNorm1d(1024)
-
-        self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
-                                   self.bn1,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv2 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=1, bias=False),
-                                   self.bn2,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv1d(128, 1024, kernel_size=1, bias=False),
-                                   self.bn3,
-                                   nn.LeakyReLU(negative_slope=0.2))
-
-        self.linear1 = nn.Linear(1024, 512, bias=False)
-        self.bn3 = nn.BatchNorm1d(512)
-        self.linear2 = nn.Linear(512, 256, bias=False)
-        self.bn4 = nn.BatchNorm1d(256)
-
-        self.transform = nn.Linear(256, 3*3)
-        init.constant_(self.transform.weight, 0)
-        init.eye_(self.transform.bias.view(3, 3))
-
-    def forward(self, x):
-        batch_size = x.size(0)
-
-        x = self.conv1(x)                       # (batch_size, 3*2, num_points, k) -> (batch_size, 64, num_points, k)
-        x = self.conv2(x)                       # (batch_size, 64, num_points, k) -> (batch_size, 128, num_points, k)
-        x = x.max(dim=-1, keepdim=False)[0]     # (batch_size, 128, num_points, k) -> (batch_size, 128, num_points)
-
-        x = self.conv3(x)                       # (batch_size, 128, num_points) -> (batch_size, 1024, num_points)
-        x = x.max(dim=-1, keepdim=False)[0]     # (batch_size, 1024, num_points) -> (batch_size, 1024)
-
-        x = F.leaky_relu(self.bn3(self.linear1(x)), negative_slope=0.2)     # (batch_size, 1024) -> (batch_size, 512)
-        x = F.leaky_relu(self.bn4(self.linear2(x)), negative_slope=0.2)     # (batch_size, 512) -> (batch_size, 256)
-
-        x = self.transform(x)                   # (batch_size, 256) -> (batch_size, 3*3)
-        x = x.view(batch_size, 3, 3)            # (batch_size, 3*3) -> (batch_size, 3, 3)
-
-        return x
-
-class Pool(nn.Module):
-    def __init__(self, k, in_dim, p):
-        '''
-        k: num of kpoints
-        in_dim: feature channels
-        p: dropout rate
-        '''
-        super(Pool, self).__init__()
-        self.k = k
-        self.sigmoid = nn.Sigmoid()
-        # principal component
-        self.proj = nn.Conv1d(in_dim, in_dim*8, 1) # multi_head 8
-        self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
-
-    def forward(self, xyz, feature):
-        Z = self.drop(feature)
-        # adaptive modeling of downsampling
-        vector = torch.max(self.proj(Z).squeeze(), dim=-1, keepdim=True)[0] # bs, C, 1
-        vector = torch.reshape(vector, (vector.shape[0], -1, 8)) # bs, in_dim, 8
-        weights = torch.sum(feature.unsqueeze(-1) * vector.unsqueeze(-2), dim=1) # bs, n, 8
-        scores = self.sigmoid(weights) # batchsize, n, 8
-        values, idx = torch.topk(scores, self.k//8, dim=1) # bs, k//8, 8
-        values = torch.reshape(values, (values.shape[0], -1))
-        idx = torch.reshape(idx, (idx.shape[0], -1))
-
-        xyz_idx = idx.unsqueeze(2).repeat(1, 1, xyz.shape[1])
-        xyz_idx = xyz_idx.permute(0, 2, 1)
-        node_static = xyz.gather(2, xyz_idx)  # Bx3xnpoint
-        feature_idx = idx.unsqueeze(2).repeat(1, 1, feature.shape[1])
-        feature_idx = feature_idx.permute(0, 2, 1)
-        node_feature = feature.gather(2, feature_idx)  # Bx3xnpoint
-        ## especially important
-        values = torch.unsqueeze(values, 1)
-        assert values.shape == (feature.shape[0], 1, self.k), "values shape error"
-        node_feature = torch.mul(node_feature, values)
-        node = torch.mul(node_static, values)
-        return node, node_feature, node_static
-
-
-def unpool(xyz, unknown_xyz, features):
-    """
-    idea from three interpolate of PointNet2
-    input:
-        param xyz: input data Bx3xM tensor
-        param unknown_xyz: input node data Bx3xN tensor
-        param features: input feature BxCxM tensor
-    return:
-        unknown_features: BxCxN
-    """
-    M = xyz.size(-1)
-    xyz_expanded = xyz.unsqueeze(2).expand(unknown_xyz.size(0), unknown_xyz.size(1), unknown_xyz.size(2), M) # B, 3, N, M
-    unknown_xyz_expanded = unknown_xyz.unsqueeze(3).expand_as(xyz_expanded)
-
-    # calcuate difference between x and each node
-    diff = unknown_xyz_expanded - xyz_expanded  # Bx3xNxM
-    diff_norm = (diff ** 2).sum(dim=1)  # BxNxM
-    nn_dist, nn_idx = torch.topk(diff_norm, k=3, dim=-1, largest=False, sorted=False)  # BxNx3
-    weight = F.softmax(nn_dist, dim=-1) # BxNx3
-
-    # gather known features and aggregate unknown features
-    nn_idx_fold = nn_idx.reshape(nn_idx.shape[0], -1)  # Bx3N
-    nn_idx_fold = nn_idx_fold.unsqueeze(1).expand(
-        features.size(0), features.size(1), nn_idx_fold.size(-1)) # B x C x 3N
-    feature_grouped = features.gather(dim=2, index=nn_idx_fold)  # B x C x 3N
-    feature_unfold = feature_grouped.reshape(features.shape[0], features.shape[1],
-                                             nn_idx.shape[1], nn_idx.shape[2])  # B x C x N x 3
-    unknown_features = torch.sum(weight.unsqueeze(1) * feature_unfold, dim=-1)
-    return unknown_features
-
-
-def aggregate(xyz, node, features, k):
-    """
-    :param xyz: input data Bx3xN tensor
-    :param node: input node data Bx3xM tensor
-    :param features: input feature BxCxN tensor
-    :param k: number of neighbors
-    return:
-    node_features: BxCxM
-    """
-    M = node.size(-1)
-    node = node.unsqueeze(2).expand(xyz.size(0), xyz.size(1), xyz.size(2), M)
-    x_expanded = xyz.unsqueeze(3).expand_as(node)
-
-    # calcuate difference between x and each node
-    diff = x_expanded - node  # BxCxNxnode_num
-    diff_norm = (diff ** 2).sum(dim=1)  # BxNxnode_num
-
-    # find the nearest neighbor
-    _, nn_idx = torch.topk(diff_norm, k=k, dim=1, largest=False, sorted=False)  # BxkxM
-    nn_idx_fold = nn_idx.reshape(nn_idx.shape[0], -1) #BxkM
-    nn_idx_fold = nn_idx_fold.unsqueeze(1).expand(
-                   features.size(0), features.size(1), nn_idx_fold.size(-1))
-    # B x C x kM
-    feature_grouped = features.gather(dim=2, index=nn_idx_fold) # B x C x kM
-    feature_unfold = feature_grouped.reshape(features.shape[0], features.shape[1],
-                                             nn_idx.shape[1], nn_idx.shape[2]) # B x C x k x M
-    feature_max = torch.max(feature_unfold, dim=2)[0]  # BxCxM
-    return feature_max
-
-
 
 class DGCNN_partseg(nn.Module):
     def __init__(self, args, seg_num_all):
@@ -821,6 +559,9 @@ class DGCNN_partseg(nn.Module):
         self.bn10 = nn.BatchNorm1d(256)
         self.bn11 = nn.BatchNorm1d(256)
         self.bn12 = nn.BatchNorm1d(128)
+        self.bn1_p = nn.BatchNorm1d(64)
+        self.bn2_p = nn.BatchNorm1d(64)
+        self.bn3_p = nn.BatchNorm1d(64)
 
         self.pool1 = IndexSelect(self.args.num_points//4, 64, neighs=self.k//2)
         self.pool2 = IndexSelect(self.args.num_points//16, 64, neighs=self.k//4)
@@ -833,15 +574,24 @@ class DGCNN_partseg(nn.Module):
         self.conv2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
                                    self.bn2,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv2d(64*2*2, 64, kernel_size=1, bias=False),
+        self.conv1_p = nn.Sequential(nn.Conv1d(64*2, 64, kernel_size=1, bias=False),
+                                   self.bn1_p,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv3 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn3,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
                                    self.bn4,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv5 = nn.Sequential(nn.Conv2d(64*4, 64, kernel_size=1, bias=False),
+        self.conv2_p = nn.Sequential(nn.Conv1d(64*2, 64, kernel_size=1, bias=False),
+                                     self.bn2_p,
+                                     nn.LeakyReLU(negative_slope=0.2))
+        self.conv5 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
+        self.conv3_p = nn.Sequential(nn.Conv1d(64 * 2, 64, kernel_size=1, bias=False),
+                                     self.bn3_p,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.conv6 = nn.Sequential(nn.Conv2d(64*2*2, 64, kernel_size=1, bias=False),
                                    self.bn6,
                                    nn.LeakyReLU(negative_slope=0.2))
@@ -882,28 +632,34 @@ class DGCNN_partseg(nn.Module):
         node_feature_1, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
         node_features_agg = aggregate(xyz, node1_static, x1, self.k//2)
         x = torch.cat((node_feature_1, node_features_agg), dim=1) # (batch_size, 64*2, num_points//4)
+        x_p1 = self.conv1_p(x)                              # (batch_size, 64, num_points//4)
 
-        x = get_graph_feature(x, k=self.k//2)                # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = get_graph_feature(x_p1, k=self.k//2)                # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv3(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x = self.conv4(x)                                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        x2 = F.leaky_relu(x2+x_p1, negative_slope=0.2)      # (batch_size, 64, num_points//4)
 
         # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
         node_feature_2, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
         node_features_agg = aggregate(node1_static, node2_static, x2, self.k//4)
         x = torch.cat((node_feature_2, node_features_agg), dim=1)      # (batch_size, 64*2, num_points//16)
+        x_p2 = self.conv2_p(x)                              # (batch_size, 64, num_points//16)
 
-        x = get_graph_feature(x, k=self.k//4)              # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
+        x = get_graph_feature(x_p2, k=self.k//4)              # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
         x = self.conv5(x)                                  # (batch_size, 128*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x3 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        x3 = F.leaky_relu(x3+x_p2, negative_slope=0.2)
 
         node_feature_3, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
         node_features_agg = aggregate(node2_static, node3_static, x3, self.k//8)
         x = torch.cat((node_feature_3, node_features_agg), dim=1) # (batch_size, 64*2, num_points//64)
+        x_p3 = self.conv3_p(x)                                    # (batch_size, 64, num_points//64)
 
-        x = get_graph_feature(x, k=self.k//8)             # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = get_graph_feature(x_p3, k=self.k//8)             # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv6(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x4 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        x4 = F.leaky_relu(x4+x_p3, negative_slope=0.2)
 
         x1_t = x1.max(dim=-1, keepdim=True)[0]
         x2_t = x2.max(dim=-1, keepdim=True)[0]
