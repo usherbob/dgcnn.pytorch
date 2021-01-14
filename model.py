@@ -234,15 +234,12 @@ class PointNet(nn.Module):
         ret.append(ret1)
         ret.append(ret2)
         ret.append(ret3)
-        ret.append(ret4)
         node.append(node1)
         node.append(node2)
         node.append(node3)
-        node.append(node4)
         node_static.append(node1_static)
         node_static.append(node2_static)
         node_static.append(node3_static)
-        node_static.append(node4_static)
         return x, ret, node, node_static
 
 class PointNet_scan(nn.Module):
@@ -369,12 +366,15 @@ class DGCNN_cls(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.bn2 = nn.BatchNorm2d(64)
         self.bn2_m = nn.BatchNorm1d(args.emb_dims//2)
+        self.bn2_p = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm2d(128)
         self.bn4 = nn.BatchNorm2d(128)
         self.bn4_m = nn.BatchNorm1d(args.emb_dims//2)
+        self.bn4_p = nn.BatchNorm1d(256)
         self.bn5 = nn.BatchNorm2d(256)
         self.bn6 = nn.BatchNorm2d(256)
         self.bn6_m = nn.BatchNorm1d(args.emb_dims // 2)
+        self.bn6_p = nn.BatchNorm1d(512)
         self.bn7 = nn.BatchNorm2d(512)
         self.bn8 = nn.BatchNorm2d(512)
 
@@ -387,6 +387,9 @@ class DGCNN_cls(nn.Module):
         self.conv2_m = nn.Sequential(nn.Conv1d(64, args.emb_dims//2, kernel_size=1, bias=False),
                                      self.bn2_m,
                                      nn.LeakyReLU(negative_slope=0.2))
+        self.conv2_p = nn.Sequential(nn.Conv1d(128, 128, kernel_size=1, bias=False),
+                                     self.bn2_p,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.conv3 = nn.Sequential(nn.Conv2d(128*2, 128, kernel_size=1, bias=False),
                                    self.bn3,
                                    nn.LeakyReLU(negative_slope=0.2))
@@ -396,6 +399,9 @@ class DGCNN_cls(nn.Module):
         self.conv4_m = nn.Sequential(nn.Conv1d(128, args.emb_dims//2, kernel_size=1, bias=False),
                                      self.bn4_m,
                                      nn.LeakyReLU(negative_slope=0.2))
+        self.conv4_p = nn.Sequential(nn.Conv1d(256, 256, kernel_size=1, bias=False),
+                                     self.bn4_p,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.conv5 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
@@ -404,6 +410,9 @@ class DGCNN_cls(nn.Module):
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv6_m = nn.Sequential(nn.Conv1d(256, args.emb_dims//2, kernel_size=1, bias=False),
                                      self.bn6_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
+        self.conv6_p = nn.Sequential(nn.Conv1d(512, 512, kernel_size=1, bias=False),
+                                     self.bn6_p,
                                      nn.LeakyReLU(negative_slope=0.2))
         self.conv7 = nn.Sequential(nn.Conv2d(512*2, 512, kernel_size=1, bias=False),
                                    self.bn7,
@@ -446,6 +455,7 @@ class DGCNN_cls(nn.Module):
         node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x2)
         node_features_agg = aggregate(xyz, node1_static, x2, self.k)
         x_p1 = torch.cat((node_features, node_features_agg), dim=1)    #(batch_size, 128, num_points//4)
+        x_p1 = self.conv2_p(x_p1)
 
         ## level2
         x = get_graph_feature(x_p1, k=self.k//2)   # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points, k//2)
@@ -462,6 +472,7 @@ class DGCNN_cls(nn.Module):
         node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x4)
         node_features_agg = aggregate(node1_static, node2_static, x4, self.k//2)
         x_p2 = torch.cat((node_features, node_features_agg), dim=1)    #(batch_size, 128*2, num_points//16)
+        x_p2 = self.conv4_p(x_p2)
 
         ## level3
         x = get_graph_feature(x_p2, k=self.k // 4)  # (batch_size, 256, num_points//16) -> (batch_size, 256*2, num_points//16, k//4)
@@ -478,6 +489,7 @@ class DGCNN_cls(nn.Module):
         node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x6)
         node_features_agg = aggregate(node2_static, node3_static, x6, self.k)
         x_p3 = torch.cat((node_features, node_features_agg), dim=1)    #(batch_size, 256*2, num_points//64)
+        x_p3 = self.conv6_p(x_p3)
 
         ## level4
         x = get_graph_feature(x_p3, k=self.k // 8)  # (batch_size, 512, num_points//64) -> (batch_size, 512, num_points//64, k//8)
