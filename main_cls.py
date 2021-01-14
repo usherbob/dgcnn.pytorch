@@ -45,10 +45,10 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points, num_classes=args.num_classes), num_workers=8,
-                              batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes), num_workers=8,
-                             batch_size=args.test_batch_size, shuffle=True, drop_last=False)
+    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points, num_classes=args.num_classes, BASE_DIR=BASE_DIR),
+                              num_workers=8, batch_size=args.batch_size, shuffle=True, drop_last=True)
+    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes, BASE_DIR=BASE_DIR),
+                             num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -196,7 +196,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes),
+    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points, num_classes=args.num_classes, BASE_DIR=BASE_DIR),
                              batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
