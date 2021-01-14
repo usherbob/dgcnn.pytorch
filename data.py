@@ -71,7 +71,7 @@ def download_S3DIS():
 
 
 def load_data_cls(partition, num_classes, BASE_DIR = '/opt/data/private'):
-    DATA_DIR = os.path.join(BASE_DIR, '/data')
+    DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
     all_label = []
     for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet{}*hdf5_2048'.format(num_classes), '*%s*.h5'%partition)):
@@ -96,7 +96,7 @@ def load_data_scan(h5_filename):
 
 def load_data_partseg(partition, BASE_DIR = '/opt/data/private'):
     # download_shapenetpart()
-    DATA_DIR = os.path.join(BASE_DIR, '/data')
+    DATA_DIR = os.path.join(BASE_DIR, 'data')
     all_data = []
     all_label = []
     all_seg = []
@@ -130,7 +130,7 @@ def prepare_test_data_semseg(BASE_DIR = '/opt/data/private'):
 
 
 def load_data_semseg(partition, test_area, BASE_DIR = '/opt/data/private'):
-    DATA_DIR = os.path.join(BASE_DIR, '/data')
+    DATA_DIR = os.path.join(BASE_DIR, 'data')
     # download_S3DIS()
     prepare_test_data_semseg()
     # if partition == 'train':
