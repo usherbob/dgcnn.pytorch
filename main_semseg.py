@@ -341,9 +341,10 @@ if __name__ == "__main__":
                         help='visualize atp selection')
     args = parser.parse_args()
 
+    BASE_DIR = args.base_dir
+
     _init_()
 
-    BASE_DIR = args.base_dir
     io = IOStream(BASE_DIR+'/ckpt/semseg/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
