@@ -252,8 +252,8 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ShapeNetPart(partition='test', num_points=args.num_points, class_choice=args.class_choice),
-                             batch_size=args.test_batch_size, shuffle=False, drop_last=False, BASE_DIR=BASE_DIR)
+    test_loader = DataLoader(ShapeNetPart(partition='test', num_points=args.num_points, class_choice=args.class_choice,
+                                          BASE_DIR=BASE_DIR), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
