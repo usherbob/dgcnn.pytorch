@@ -595,7 +595,7 @@ class DGCNN_partseg(nn.Module):
         self.conv6 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn6,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv6_m = nn.Sequential(nn.Conv1d(64*4, args.emb_dims, kernel_size=1, bias=False),
+        self.conv6_m = nn.Sequential(nn.Conv1d(64*32, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn6_m,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv7 = nn.Sequential(nn.Conv1d(16, 64, kernel_size=1, bias=False),
@@ -661,11 +661,12 @@ class DGCNN_partseg(nn.Module):
         x4 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
         x4 = F.leaky_relu(x4+x_p3, negative_slope=0.2)
 
-        x1_t = x1.max(dim=-1, keepdim=True)[0]
-        x2_t = x2.max(dim=-1, keepdim=True)[0]
-        x3_t = x3.max(dim=-1, keepdim=True)[0]
-        x4_t = x4.max(dim=-1, keepdim=True)[0]
-        x = torch.cat((x1_t, x2_t, x3_t, x4_t), dim=1)
+        # x1_t = x1.max(dim=-1, keepdim=True)[0]
+        # x2_t = x2.max(dim=-1, keepdim=True)[0]
+        # x3_t = x3.max(dim=-1, keepdim=True)[0]
+        # x4_t = x4.max(dim=-1, keepdim=True)[0]
+        # x = torch.cat((x1_t, x2_t, x3_t, x4_t), dim=1)
+        x = torch.reshape(x4, (x.shape[0], -1))
         x = self.conv6_m(x)                                 # (batch_size, 64*4, 1) -> (batch_size, 1024, 1)
 
         l = l.view(batch_size, -1, 1)                       # (batch_size, num_categoties, 1)

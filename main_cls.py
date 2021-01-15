@@ -104,13 +104,13 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits, ret, node, _ = model(data)
+            logits, ret, node, node_static = model(data)
             loss_cls = criterion(logits, label)
             loss_mi = 0.0
             for r in ret:
                 loss_mi += mi_loss(r)
-            loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
-                      compute_chamfer_distance(node[2], node[1])
+            loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node_static[0]) + \
+                      compute_chamfer_distance(node[2], node_static[1])
             loss = loss_cls + loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
@@ -166,8 +166,8 @@ def train(args, io):
                 loss_mi = 0.0
                 for r in ret:
                     loss_mi = mi_loss(r)
-                loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node[0]) + \
-                          compute_chamfer_distance(node[2], node[1])
+                loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node_static[0]) + \
+                          compute_chamfer_distance(node[2], node_static[1])
                 loss = loss_cls + loss_mi + args.cd_weights * loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
