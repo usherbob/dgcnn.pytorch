@@ -161,7 +161,7 @@ def train(args, io):
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits, ret, node, _ = model(data)
+                logits, ret, node, node_static = model(data)
                 loss_cls = criterion(logits, label)
                 loss_mi = 0.0
                 for r in ret:

@@ -666,7 +666,7 @@ class DGCNN_partseg(nn.Module):
         # x3_t = x3.max(dim=-1, keepdim=True)[0]
         # x4_t = x4.max(dim=-1, keepdim=True)[0]
         # x = torch.cat((x1_t, x2_t, x3_t, x4_t), dim=1)
-        x = torch.reshape(x4, (x.shape[0], -1))
+        x = torch.reshape(x4, (x.shape[0], -1, 1))
         x = self.conv6_m(x)                                 # (batch_size, 64*4, 1) -> (batch_size, 1024, 1)
 
         l = l.view(batch_size, -1, 1)                       # (batch_size, num_categoties, 1)
