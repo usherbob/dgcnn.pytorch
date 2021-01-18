@@ -547,9 +547,13 @@ class DGCNN_partseg(nn.Module):
         self.k = args.k
 
         self.bn1 = nn.BatchNorm2d(64)
+        self.bn1_m = nn.BatchNorm2d(64)
         self.bn2 = nn.BatchNorm2d(64)
+        self.bn2_m = nn.BatchNorm2d(64)
         self.bn3 = nn.BatchNorm2d(64)
+        self.bn3_m = nn.BatchNorm2d(64)
         self.bn4 = nn.BatchNorm2d(64)
+        self.bn4_m = nn.BatchNorm2d(64)
         self.bn5 = nn.BatchNorm2d(64)
         self.bn6 = nn.BatchNorm2d(64)
         self.bn6_m = nn.BatchNorm1d(args.emb_dims)
@@ -571,8 +575,14 @@ class DGCNN_partseg(nn.Module):
         self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
                                    self.bn1,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
+        self.conv1_m = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
+                                   self.bn1_m,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv2 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn2,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv2_m = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
+                                   self.bn2_m,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv1_p = nn.Sequential(nn.Conv1d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn1_p,
@@ -580,8 +590,14 @@ class DGCNN_partseg(nn.Module):
         self.conv3 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn3,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
+        self.conv3_m = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
+                                   self.bn3_m,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv4 = nn.Sequential(nn.Conv2d(64*2, 64, kernel_size=1, bias=False),
                                    self.bn4,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv4_m = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
+                                   self.bn4_m,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv2_p = nn.Sequential(nn.Conv1d(64*2, 64, kernel_size=1, bias=False),
                                      self.bn2_p,
@@ -626,7 +642,12 @@ class DGCNN_partseg(nn.Module):
 
         x = get_graph_feature(x, k=self.k)                 # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
         x = self.conv1(x)                                  # (batch_size, 3*2, num_points, k) -> (batch_size, 64, num_points, k)
-        x = self.conv2(x)                                  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
+        x = self.conv1_m(x)                                # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
+        x = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+
+        x = get_graph_feature(x, k=self.k)                 # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
+        x = self.conv2(x)                                  # (batch_size, 64*2, num_points, k) -> (batch_size, 64, num_points, k)
+        x = self.conv2_m(x)                                # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
         x1 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
         node_feature_1, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
@@ -634,11 +655,16 @@ class DGCNN_partseg(nn.Module):
         x = torch.cat((node_feature_1, node_features_agg), dim=1) # (batch_size, 64*2, num_points//4)
         x_p1 = self.conv1_p(x)                              # (batch_size, 64, num_points//4)
 
-        x = get_graph_feature(x_p1, k=self.k//2)                # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = get_graph_feature(x_p1, k=self.k//2)           # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv3(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x = self.conv4(x)                                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
+        x = self.conv3_m(x)                                # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
+        x = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//4)
+
+        x = get_graph_feature(x, k=self.k//2)              # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = self.conv4(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
+        x = self.conv4_m(x)                                # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x2 = F.leaky_relu(x2+x_p1, negative_slope=0.2)      # (batch_size, 64, num_points//4)
+        x2 = F.leaky_relu(x2+x_p1, negative_slope=0.2)     # (batch_size, 64, num_points//4)
 
         # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
         node_feature_2, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
