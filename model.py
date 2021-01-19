@@ -561,10 +561,15 @@ class DGCNN_partseg(nn.Module):
         self.bn6_f = nn.BatchNorm1d(args.emb_dims)
         self.bn7 = nn.BatchNorm1d(64)
         self.bn8 = nn.BatchNorm1d(256)
+        self.bn8_m = nn.BatchNorm1d(256)
         self.bn9 = nn.BatchNorm1d(256)
+        self.bn9_m = nn.BatchNorm1d(256)
         self.bn10 = nn.BatchNorm1d(256)
+        self.bn10_m = nn.BatchNorm1d(256)
         self.bn11 = nn.BatchNorm1d(256)
-        self.bn12 = nn.BatchNorm1d(128)
+        self.bn11_m = nn.BatchNorm1d(256)
+        self.bn12 = nn.BatchNorm1d(256)
+        self.bn12_m = nn.BatchNorm1d(128)
         self.bn1_p = nn.BatchNorm1d(64)
         self.bn2_p = nn.BatchNorm1d(64)
         self.bn3_p = nn.BatchNorm1d(64)
@@ -627,18 +632,33 @@ class DGCNN_partseg(nn.Module):
         self.conv8 = nn.Sequential(nn.Conv1d(args.emb_dims+64, 256, kernel_size=1, bias=False),
                                    self.bn8,
                                    nn.LeakyReLU(negative_slope=0.2))
+        self.conv8_m = nn.Sequential(nn.Conv1d(256, 256, kernel_size=1, bias=False),
+                                   self.bn8_m,
+                                   nn.LeakyReLU(negative_slope=0.2))
         self.conv9 = nn.Sequential(nn.Conv1d(256+64, 256, kernel_size=1, bias=False),
                                    self.bn9,
                                    nn.LeakyReLU(negative_slope=0.2))
+        self.conv9_m = nn.Sequential(nn.Conv1d(256, 256, kernel_size=1, bias=False),
+                                     self.bn9_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.conv10 = nn.Sequential(nn.Conv1d(256+64, 256, kernel_size=1, bias=False),
                                    self.bn10,
                                    nn.LeakyReLU(negative_slope=0.2))
+        self.conv10_m = nn.Sequential(nn.Conv1d(256, 256, kernel_size=1, bias=False),
+                                     self.bn10_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.conv11 = nn.Sequential(nn.Conv1d(256+64, 256, kernel_size=1, bias=False),
                                     self.bn11,
                                     nn.LeakyReLU(negative_slope=0.2))
-        self.conv12 = nn.Sequential(nn.Conv1d(256+64, 128, kernel_size=1, bias=False),
+        self.conv11_m = nn.Sequential(nn.Conv1d(256, 256, kernel_size=1, bias=False),
+                                     self.bn11_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
+        self.conv12 = nn.Sequential(nn.Conv1d(256+64, 256, kernel_size=1, bias=False),
                                     self.bn12,
                                     nn.LeakyReLU(negative_slope=0.2))
+        self.conv12_m = nn.Sequential(nn.Conv1d(256, 128, kernel_size=1, bias=False),
+                                     self.bn12_m,
+                                     nn.LeakyReLU(negative_slope=0.2))
         self.dp = nn.Dropout(p=args.dropout)
         self.conv13 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
         
@@ -706,22 +726,27 @@ class DGCNN_partseg(nn.Module):
 
         x = torch.cat((x, l), dim=1)                        # (batch_size, 1088, 1)
         x = self.conv8(x)                                   # (batch_size, 1088, 1) -> (batch_size, 256, 1)
+        x = self.conv8_m(x)                                 # (batch_size, 256, 1) -> (batch_size, 256, 1)
 
         x = x.repeat(1, 1, x4.shape[-1])                    # (batch_size, 64, num_points//64)
         x = torch.cat((x, x4), dim=1)                       # (batch_size, 256+64, num_points//4)
         x = self.conv9(x)                                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.conv9_m(x)                                 # (batch_size, 256, num_points//4) -> (batch_size, 256, num_points//4)
 
         x = unpool(node3_static, node2_static, x)           # (batch_size, 64, num_points//16)
         x = torch.cat((x, x3), dim=1)                       # (batch_size, 256+64, num_points//4)
         x = self.conv10(x)                                  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.conv10_m(x)                                # (batch_size, 256, num_points//4) -> (batch_size, 256, num_points//4)
 
         x = unpool(node2_static, node1_static, x)           # (batch_size, 64, num_points//4)
         x = torch.cat((x, x2), dim=1)                       # (batch_size, 256+64, num_points)
         x = self.conv11(x)                                  # (batch_size, 256+64, num_points) -> (batch_size, 256, num_points)
+        x = self.conv11_m(x)                                # (batch_size, 256, num_points) -> (batch_size, 256, num_points)
 
-        x = unpool(node1_static, xyz, x)           # (batch_size, 64, num_points)
+        x = unpool(node1_static, xyz, x)                    # (batch_size, 64, num_points)
         x = torch.cat((x, x1), dim=1)                       # (batch_size, 256+64, num_points)
         x = self.conv12(x)                                  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
+        x = self.conv12_m(x)                                # (batch_size, 256, num_points) -> (batch_size, 128, num_points)
         x = self.dp(x)
 
         x = self.conv13(x)                                  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
