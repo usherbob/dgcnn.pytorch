@@ -650,12 +650,13 @@ class DGCNN_partseg(nn.Module):
         x = get_graph_feature(x, k=self.k)                 # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
         x = self.conv1(x)                                  # (batch_size, 3*2, num_points, k) -> (batch_size, 64, num_points, k)
         x = self.conv1_m(x)                                # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
-        x = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        x_u1 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
-        x = get_graph_feature(x, k=self.k)                 # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
+        x = get_graph_feature(x_u1, k=self.k)                 # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv2(x)                                  # (batch_size, 64*2, num_points, k) -> (batch_size, 64, num_points, k)
         x = self.conv2_m(x)                                # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
-        x1 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        x = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        x1 = F.leaky_relu(x+x_u1, negative_slope=0.2)     # (batch_size, 64, num_points//4)
 
         node_feature_1, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
         node_features_agg = aggregate(xyz, node1_static, x1, self.k//2)
@@ -666,12 +667,13 @@ class DGCNN_partseg(nn.Module):
         x = self.conv3(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x = self.conv3_m(x)                                # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//4)
+        x_u2 = F.leaky_relu(x+x_p1, negative_slope=0.2)
 
-        x = get_graph_feature(x, k=self.k//2)              # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
+        x = get_graph_feature(x_u2, k=self.k//2)              # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv4(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x = self.conv4_m(x)                                # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x2 = F.leaky_relu(x2+x_p1, negative_slope=0.2)     # (batch_size, 64, num_points//4)
+        x = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        x2 = F.leaky_relu(x+x_u2, negative_slope=0.2)     # (batch_size, 64, num_points//4)
 
         # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
         node_feature_2, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
