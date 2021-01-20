@@ -134,21 +134,14 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data, label_one_hot)
+            seg_pred = model(data, label_one_hot)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
-                      + compute_chamfer_distance(node3, node2_static)
-            loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
-            loss = loss_cls + loss_mi + args.cd_weights * loss_cd
-            loss.backward()
+            loss_cls.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
             count += batch_size
-            train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
-            train_cd_loss += loss_cd.item() * batch_size
-            train_mi_loss += loss_mi.item() * batch_size
             seg_np = seg.cpu().numpy()                  # (batch_size, num_points)
             pred_np = pred.detach().cpu().numpy()       # (batch_size, num_points)
             train_true_cls.append(seg_np.reshape(-1))       # (batch_size * num_points)
@@ -173,12 +166,9 @@ def train(args, io):
         train_label_seg = np.concatenate(train_label_seg)
         train_ious = calculate_shape_IoU(train_pred_seg, train_true_seg, train_label_seg, args.class_choice)
         duration = time.time() - start
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, train acc: %.6f, ' \
+        outstr = 'Train %d, loss_cls: %.6f, train acc: %.6f, ' \
                  'train avg acc: %.6f, train iou: %.6f, time usage: %d s'                         % (epoch,
-                                                                                                  train_loss*1.0/count,
                                                                                                   train_cls_loss*1.0/count,
-                                                                                                  train_cd_loss*1.0/count,
-                                                                                                  train_mi_loss*1.0/count,
                                                                                                   train_acc,
                                                                                                   avg_per_class_acc,
                                                                                                   np.mean(train_ious),
@@ -209,19 +199,12 @@ def train(args, io):
                 data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data, label_one_hot)
+                seg_pred = model(data, label_one_hot)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
-                          + compute_chamfer_distance(node3, node2_static)
-                loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
-                loss = loss_cls + loss_mi + args.cd_weights * loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
-                test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
-                test_cd_loss += loss_cd.item() * batch_size
-                test_mi_loss += loss_mi.item() * batch_size
                 seg_np = seg.cpu().numpy()
                 pred_np = pred.detach().cpu().numpy()
                 test_true_cls.append(seg_np.reshape(-1))
@@ -237,11 +220,8 @@ def train(args, io):
         test_pred_seg = np.concatenate(test_pred_seg, axis=0)
         test_label_seg = np.concatenate(test_label_seg)
         test_ious = calculate_shape_IoU(test_pred_seg, test_true_seg, test_label_seg, args.class_choice)
-        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, test acc: %.6f, test avg acc: %.6f, test iou: %.6f' % (epoch,
-                                                                                              test_loss*1.0/count,
+        outstr = 'Test %d, loss_cls: %.6f, test acc: %.6f, test avg acc: %.6f, test iou: %.6f' % (epoch,
                                                                                               test_cls_loss*1.0/count,
-                                                                                              test_cd_loss*1.0/count,
-                                                                                              test_mi_loss*1.0/count,
                                                                                               test_acc,
                                                                                               avg_per_class_acc,
                                                                                               np.mean(test_ious))
@@ -283,7 +263,7 @@ def test(args, io):
         label_one_hot = torch.from_numpy(label_one_hot.astype(np.float32))
         data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
         data = data.permute(0, 2, 1)
-        seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data, label_one_hot)
+        seg_pred = model(data, label_one_hot)
         seg_pred = seg_pred.permute(0, 2, 1).contiguous()
         pred = seg_pred.max(dim=2)[1]
         seg_np = seg.cpu().numpy()
@@ -293,18 +273,18 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
-        if args.visu and batch_count % 5 == 0:
-            for i in range(data.shape[0]):
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        data[i, :, :].detach().cpu().numpy())
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        node1_static[i, :, :].detach().cpu().numpy())
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%04d.npy' % (
-                args.exp_name, batch_count * args.test_batch_size + i),
-                        node2_static[i, :, :].detach().cpu().numpy())
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%04d.npy' % (
-                args.exp_name, batch_count * args.test_batch_size + i),
-                        node3_static[i, :, :].detach().cpu().numpy())
+        # if args.visu and batch_count % 5 == 0:
+        #     for i in range(data.shape[0]):
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+        #                 data[i, :, :].detach().cpu().numpy())
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+        #                 node1_static[i, :, :].detach().cpu().numpy())
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%04d.npy' % (
+        #         args.exp_name, batch_count * args.test_batch_size + i),
+        #                 node2_static[i, :, :].detach().cpu().numpy())
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%04d.npy' % (
+        #         args.exp_name, batch_count * args.test_batch_size + i),
+        #                 node3_static[i, :, :].detach().cpu().numpy())
 
     test_true_cls = np.concatenate(test_true_cls)
     test_pred_cls = np.concatenate(test_pred_cls)
