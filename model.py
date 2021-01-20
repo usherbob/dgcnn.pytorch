@@ -562,9 +562,9 @@ class DGCNN_partseg(nn.Module):
         self.bn2_p = nn.BatchNorm1d(64)
         self.bn3_p = nn.BatchNorm1d(64)
 
-        self.pool1 = IndexSelect(self.args.num_points // 4, 64, neighs=self.k // 2)
-        self.pool2 = IndexSelect(self.args.num_points // 16, 64, neighs=self.k // 4)
-        self.pool3 = IndexSelect(self.args.num_points // 64, 64, neighs=self.k // 8)
+        self.pool1 = IndexSelect(self.args.num_points // 4, 128, neighs=self.k // 2)
+        self.pool2 = IndexSelect(self.args.num_points // 16, 128, neighs=self.k // 4)
+        self.pool3 = IndexSelect(self.args.num_points // 64, 128, neighs=self.k // 8)
         # self.pool1 = IndexSelect(256, 64, neighs=self.k//2)
 
         self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
