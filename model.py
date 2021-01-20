@@ -558,9 +558,9 @@ class DGCNN_partseg(nn.Module):
         self.bn10 = nn.BatchNorm1d(256)
         self.bn11 = nn.BatchNorm1d(256)
         self.bn12 = nn.BatchNorm1d(128)
-        self.bn1_p = nn.BatchNorm1d(64)
-        self.bn2_p = nn.BatchNorm1d(64)
-        self.bn3_p = nn.BatchNorm1d(64)
+        self.bn1_p = nn.BatchNorm1d(128)
+        self.bn2_p = nn.BatchNorm1d(128)
+        self.bn3_p = nn.BatchNorm1d(128)
 
         self.pool1 = IndexSelect(self.args.num_points // 4, 128, neighs=self.k // 2)
         self.pool2 = IndexSelect(self.args.num_points // 16, 128, neighs=self.k // 4)
