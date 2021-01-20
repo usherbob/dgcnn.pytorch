@@ -630,8 +630,8 @@ class DGCNN_partseg(nn.Module):
         x1 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
         # node_feature_1, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
-        node_feature_1 = x1[:, :, :self.num_points // 4]
-        node1 = xyz[:, :, :self.num_points // 4]
+        node_feature_1 = x1[:, :, :self.args.num_points // 4]
+        node1 = xyz[:, :, :self.args.num_points // 4]
         node_features_agg = aggregate(xyz, node1, x1, self.k//2)
         x = torch.cat((node_feature_1, node_features_agg), dim=1) # (batch_size, 64*2, num_points//4)
         x_p1 = self.conv1_p(x)                              # (batch_size, 64, num_points//4)
@@ -644,8 +644,8 @@ class DGCNN_partseg(nn.Module):
 
         # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
         # node_feature_2, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
-        node_feature_2 = x2[:, :, :self.num_points//16]
-        node2 = node1[:, :, :self.num_points//16]
+        node_feature_2 = x2[:, :, :self.args.num_points//16]
+        node2 = node1[:, :, :self.args.num_points//16]
         node_features_agg = aggregate(node1, node2, x2, self.k//4)
         x = torch.cat((node_feature_2, node_features_agg), dim=1)      # (batch_size, 64*2, num_points//16)
         x_p2 = self.conv2_p(x)                              # (batch_size, 64, num_points//16)
@@ -656,8 +656,8 @@ class DGCNN_partseg(nn.Module):
         x3 = F.leaky_relu(x3+x_p2, negative_slope=0.2)
 
         # node_feature_3, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
-        node_feature_3 = x3[:, :, :self.num_points // 64]
-        node3 = node2[:, :, :self.num_points // 64]
+        node_feature_3 = x3[:, :, :self.args.num_points // 64]
+        node3 = node2[:, :, :self.args.num_points // 64]
         node_features_agg = aggregate(node2, node3, x3, self.k//8)
         x = torch.cat((node_feature_3, node_features_agg), dim=1) # (batch_size, 64*2, num_points//64)
         x_p3 = self.conv3_p(x)                                    # (batch_size, 64, num_points//64)
