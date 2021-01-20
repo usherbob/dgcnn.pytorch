@@ -667,7 +667,7 @@ class DGCNN_partseg(nn.Module):
         x4 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
         x4 = F.leaky_relu(x4+x_p3, negative_slope=0.2)
 
-        x = torch.reshape(x4, (x.shape[0], -1))
+        x = torch.reshape(x4, (x.shape[0], -1, 1))
         x = self.conv6_m(x)                                 # (batch_size, 64*4, 1) -> (batch_size, 1024, 1)
 
         l = l.view(batch_size, -1, 1)                       # (batch_size, num_categoties, 1)
