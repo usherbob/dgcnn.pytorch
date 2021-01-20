@@ -680,15 +680,15 @@ class DGCNN_partseg(nn.Module):
         x = torch.cat((x, x4), dim=1)                       # (batch_size, 256+64, num_points//4)
         x = self.conv9(x)                                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        x = unpool(node3_static, node2_static, x)           # (batch_size, 64, num_points//16)
+        x = unpool(node3, node2, x)           # (batch_size, 64, num_points//16)
         x = torch.cat((x, x3), dim=1)                       # (batch_size, 256+64, num_points//4)
         x = self.conv10(x)                                  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        x = unpool(node2_static, node1_static, x)           # (batch_size, 64, num_points//4)
+        x = unpool(node2, node1, x)           # (batch_size, 64, num_points//4)
         x = torch.cat((x, x2), dim=1)                       # (batch_size, 256+64, num_points)
         x = self.conv11(x)                                  # (batch_size, 256+64, num_points) -> (batch_size, 256, num_points)
 
-        x = unpool(node1_static, xyz, x)           # (batch_size, 64, num_points)
+        x = unpool(node1, xyz, x)           # (batch_size, 64, num_points)
         x = torch.cat((x, x1), dim=1)                       # (batch_size, 256+64, num_points)
         x = self.conv12(x)                                  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
         x = self.dp(x)
