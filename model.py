@@ -163,7 +163,7 @@ class PointNet(nn.Module):
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = IndexSelect(256, 64)
+        # self.pool1 = IndexSelect(256, 64)
         # self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
@@ -172,8 +172,10 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x)
-        node_features_agg = aggregate(xyz, node1_static, x, 20)
+        # node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x)
+        node_features = x[:, :, :self.args.num_points//4]
+        node1 = xyz[:, :, :self.args.num_points//4]
+        node_features_agg = aggregate(xyz, node1, x, 20)
         x = torch.cat((node_features, node_features_agg), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
@@ -184,7 +186,7 @@ class PointNet(nn.Module):
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
-        return x, ret, node1, node1_static
+        return x
 
 class PointNet_scan(nn.Module):
     def __init__(self, args, output_channels=15, seg_num_all=2):
@@ -332,7 +334,7 @@ class DGCNN_cls(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = IndexSelect(256, 128) #Pool(args.num_points//4, 128, 0.2)
+        # self.pool1 = IndexSelect(256, 128) #Pool(args.num_points//4, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -356,9 +358,11 @@ class DGCNN_cls(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x_t1_)
+        # node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x_t1_)
         # node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
-        node_features_agg = aggregate(xyz, node1_static, x_t1_, self.k)
+        node_features = x[:, :, :self.args.num_points//4]
+        node1 = xyz[:, :, :self.args.num_points//4]
+        node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features, node_features_agg), dim=1)
 
         x = get_graph_feature(x, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
@@ -381,7 +385,7 @@ class DGCNN_cls(nn.Module):
         x = F.leaky_relu(self.bn7(self.linear2(x)), negative_slope=0.2) # (batch_size, 512) -> (batch_size, 256)
         x = self.dp2(x)
         x = self.linear3(x)                                             # (batch_size, 256) -> (batch_size, output_channels)
-        return x, ret, node1, node1_static
+        return x
         # return x, node1, node1_static
 
 
