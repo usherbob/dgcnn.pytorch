@@ -29,6 +29,7 @@ class PointNet(nn.Module):
     def __init__(self, args, output_channels=40):
         super(PointNet, self).__init__()
         self.args = args
+        self.k = args.k
         self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
         self.conv2_m = nn.Conv1d(64, args.emb_dims//2, kernel_size=1, bias=False)
@@ -66,9 +67,9 @@ class PointNet(nn.Module):
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = IndexSelect(256, 64, neighs=40)
-        self.pool2 = IndexSelect(64, 128, neighs=20)
-        self.pool3 = IndexSelect(16, 256, neighs=10)
+        self.pool1 = IndexSelect(self.args.num_points//4, 64, neighs=self.k)
+        self.pool2 = IndexSelect(self.args.num_points//16, 128, neighs=self.k//2)
+        self.pool3 = IndexSelect(self.args.num_points//64, 256, neighs=self.k//4)
         # self.pool4 = IndexSelect(4, 512, neighs=10)
         # self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
@@ -81,7 +82,7 @@ class PointNet(nn.Module):
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x1)))                                     #(batch_size, 512, num_points)
 
         node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
-        node_features_agg = aggregate(xyz, node1_static, x1, 40)
+        node_features_agg = aggregate(xyz, node1_static, x1, self.k)
         x_p1 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 128, num_points//4)
         x_p1 = F.relu(self.bn1_p(self.conv1_p(x_p1)))
 
@@ -91,7 +92,7 @@ class PointNet(nn.Module):
         x_t2 = F.relu(self.bn4_m(self.conv4_m(x2)))                                     #(batch_size, 512, num_points//4)
 
         node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
-        node_features_agg = aggregate(node1_static, node2_static, x2, 20)
+        node_features_agg = aggregate(node1_static, node2_static, x2, self.k//2)
         x_p2 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 256, num_points//16)
         x_p2 = F.relu(self.bn2_p(self.conv2_p(x_p2)))
 
@@ -102,7 +103,7 @@ class PointNet(nn.Module):
         x_t3 = F.relu(self.bn6_m(self.conv6_m(x3)))                                     #(batch_size, 512, num_points//16)
 
         node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
-        node_features_agg = aggregate(node2_static, node3_static, x3, 10)
+        node_features_agg = aggregate(node2_static, node3_static, x3, self.k//4)
         x_p3 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 512, num_points//64)
         x_p3 = F.relu(self.bn3_p(self.conv3_p(x_p3)))
 
@@ -311,9 +312,9 @@ class DGCNN_cls(nn.Module):
         # self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
         #                            self.bn5,
         #                            nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = IndexSelect(256, 64, neighs=self.k) #Pool(args.num_points//4, 128)
-        self.pool2 = IndexSelect(64, 128, neighs=self.k//2) #Pool(args.num_points//16, 128)
-        self.pool3 = IndexSelect(16, 256, neighs=self.k//4) #Pool(args.num_points//64, 128)
+        self.pool1 = IndexSelect(self.args.num_points//4, 64, neighs=self.k) #Pool(args.num_points//4, 128)
+        self.pool2 = IndexSelect(self.args.num_points//16, 128, neighs=self.k//2) #Pool(args.num_points//16, 128)
+        self.pool3 = IndexSelect(self.args.num_points//64, 256, neighs=self.k//4) #Pool(args.num_points//64, 128)
         self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
         self.bn9 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
