@@ -360,7 +360,7 @@ class DGCNN_cls(nn.Module):
         x_t1 = self.conv2_m(x_t1_)
         # node_features, values, idx, ret, node1_static, node1 = self.pool1(xyz, x_t1_)
         # node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
-        node_features = x2[:, :, :self.args.num_points//4]
+        node_features = x_t1_[:, :, :self.args.num_points//4]
         node1 = xyz[:, :, :self.args.num_points//4]
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features, node_features_agg), dim=1)
