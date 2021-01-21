@@ -29,6 +29,7 @@ class PointNet(nn.Module):
     def __init__(self, args, output_channels=40):
         super(PointNet, self).__init__()
         self.args = args
+        self.k = args.k
         self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
         self.conv2_m = nn.Conv1d(64, args.emb_dims//2, kernel_size=1, bias=False)
@@ -83,7 +84,7 @@ class PointNet(nn.Module):
         # node_features, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
         node_features = x1[:, :, :self.args.num_points//4]
         node1 = xyz[:, :, :self.args.num_points//4]
-        node_features_agg = aggregate(xyz, node1, x1, 40)
+        node_features_agg = aggregate(xyz, node1, x1, self.k)
         x_p1 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 128, num_points//4)
         x_p1 = F.relu(self.bn1_p(self.conv1_p(x_p1)))
 
@@ -95,7 +96,7 @@ class PointNet(nn.Module):
         # node_features, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
         node_features = x2[:, :, :self.args.num_points // 16]
         node2 = node1[:, :, :self.args.num_points // 16]
-        node_features_agg = aggregate(node1, node2, x2, 20)
+        node_features_agg = aggregate(node1, node2, x2, self.k // 2)
         x_p2 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 256, num_points//16)
         x_p2 = F.relu(self.bn2_p(self.conv2_p(x_p2)))
 
@@ -108,7 +109,7 @@ class PointNet(nn.Module):
         # node_features, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
         node_features = x3[:, :, :self.args.num_points // 64]
         node3 = node2[:, :, :self.args.num_points // 64]
-        node_features_agg = aggregate(node2, node3, x3, 10)
+        node_features_agg = aggregate(node2, node3, x3, self.k // 4)
         x_p3 = torch.cat((node_features, node_features_agg), dim=1)                     #(batch_size, 512, num_points//64)
         x_p3 = F.relu(self.bn3_p(self.conv3_p(x_p3)))
 
