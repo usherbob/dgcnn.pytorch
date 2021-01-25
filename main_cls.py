@@ -246,7 +246,7 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
-    parser.add_argument('--num_classes', type=int, default=10,
+    parser.add_argument('--num_classes', type=int, default=40,
                         help='ModelNet10 or ModelNet40')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
