@@ -70,9 +70,8 @@ def download_S3DIS():
             os.system('rm %s' % (zippath))
 
 
-def load_data_cls(partition, num_classes):
-    BASE_DIR = '/opt/data/private/'
-    DATA_DIR = os.path.join(BASE_DIR, 'data')
+def load_data_cls(partition, num_classes, BASE_DIR = '/opt/data/private'):
+    DATA_DIR = os.path.join(BASE_DIR, '/data')
     all_data = []
     all_label = []
     for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet{}*hdf5_2048'.format(num_classes), '*%s*.h5'%partition)):
@@ -95,10 +94,9 @@ def load_data_scan(h5_filename):
     return data, label, mask
 
 
-def load_data_partseg(partition):
+def load_data_partseg(partition, BASE_DIR = '/opt/data/private'):
     # download_shapenetpart()
-    BASE_DIR = '/opt/data/private/'
-    DATA_DIR = os.path.join(BASE_DIR, 'data')
+    DATA_DIR = os.path.join(BASE_DIR, '/data')
     all_data = []
     all_label = []
     all_seg = []
@@ -122,18 +120,17 @@ def load_data_partseg(partition):
     return all_data, all_label, all_seg
 
 
-def prepare_test_data_semseg():
+def prepare_test_data_semseg(BASE_DIR = '/opt/data/private'):
     # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATA_DIR = '/opt/data/private/data'
+    DATA_DIR = os.path.join(BASE_DIR, '/data')
     if not os.path.exists(os.path.join(DATA_DIR, 'stanford_indoor3d')):
         os.system('python prepare_data/collect_indoor3d_data.py')
     if not os.path.exists(os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data_test')):
         os.system('python prepare_data/gen_indoor3d_h5.py')
 
 
-def load_data_semseg(partition, test_area):
-    BASE_DIR = '/opt/data/private/'
-    DATA_DIR = os.path.join(BASE_DIR, 'data')
+def load_data_semseg(partition, test_area, BASE_DIR = '/opt/data/private'):
+    DATA_DIR = os.path.join(BASE_DIR, '/data')
     # download_S3DIS()
     prepare_test_data_semseg()
     # if partition == 'train':
@@ -191,8 +188,8 @@ def rotate_pointcloud(pointcloud):
 
 
 class ModelNet40(Dataset):
-    def __init__(self, num_points, num_classes, partition='train'):
-        self.data, self.label = load_data_cls(partition, num_classes)
+    def __init__(self, num_points, num_classes, partition='train', BASE_DIR = '/opt/data/private'):
+        self.data, self.label = load_data_cls(partition, num_classes, BASE_DIR)
         self.num_points = num_points
         self.partition = partition
 
@@ -241,8 +238,8 @@ class ScanObject(Dataset):
 
 
 class ShapeNetPart(Dataset):
-    def __init__(self, num_points, partition='train', class_choice=None):
-        self.data, self.label, self.seg = load_data_partseg(partition)
+    def __init__(self, num_points, partition='train', class_choice=None, BASE_DIR = '/opt/data/private'):
+        self.data, self.label, self.seg = load_data_partseg(partition, BASE_DIR=BASE_DIR)
         self.cat2id = {'airplane': 0, 'bag': 1, 'cap': 2, 'car': 3, 'chair': 4, 
                        'earphone': 5, 'guitar': 6, 'knife': 7, 'lamp': 8, 'laptop': 9, 
                        'motor': 10, 'mug': 11, 'pistol': 12, 'rocket': 13, 'skateboard': 14, 'table': 15}
@@ -282,8 +279,8 @@ class ShapeNetPart(Dataset):
 
 
 class S3DIS(Dataset):
-    def __init__(self, num_points=4096, partition='train', test_area='1'):
-        self.data, self.seg = load_data_semseg(partition, test_area)
+    def __init__(self, num_points=4096, partition='train', test_area='1', BASE_DIR = '/opt/data/private'):
+        self.data, self.seg = load_data_semseg(partition, test_area, BASE_DIR=BASE_DIR)
         self.num_points = num_points
         self.partition = partition        
 
