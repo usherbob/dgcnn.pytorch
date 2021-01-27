@@ -271,7 +271,7 @@ if __name__ == "__main__":
                         help='visualize atp by saving nodes')
     parser.add_argument('--num_classes', type=int, default=10,
                         help='ModelNet10 or ModelNet40')
-    parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
+    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
     args = parser.parse_args()
 
