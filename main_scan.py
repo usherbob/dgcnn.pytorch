@@ -135,8 +135,6 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
             train_seg_loss += loss_seg.item() * batch_size
-            train_cd_loss += loss_cd.item() * batch_size
-            train_mi_loss += loss_mi.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
         if args.scheduler == 'cos':
@@ -191,8 +189,6 @@ def train(args, io):
                 test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
                 test_seg_loss += loss_seg.item() * batch_size
-                test_cd_loss += loss_cd.item() * batch_size
-                test_mi_loss += loss_mi.item() * batch_size
                 test_true.append(label.cpu().numpy())
                 test_pred.append(preds.detach().cpu().numpy())
         test_true = np.concatenate(test_true)
