@@ -321,8 +321,6 @@ if __name__ == "__main__":
                         help='Pretrained model root')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp selection')
-    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
-                        help='weights of cd_loss')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
