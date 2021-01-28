@@ -53,9 +53,9 @@ def calculate_sem_IoU(pred_np, seg_np):
 
 
 def train(args, io):
-    train_loader = DataLoader(S3DIS(partition='train', num_points=args.num_points, test_area=args.test_area), 
+    train_loader = DataLoader(S3DIS(partition='train', num_points=args.num_points, test_area=args.test_area, BASE_DIR=BASE_DIR),
                               num_workers=8, batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=args.test_area), 
+    test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=args.test_area, BASE_DIR=BASE_DIR),
                             num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -221,7 +221,7 @@ def test(args, io):
     for test_area in range(1,7):
         test_area = str(test_area)
         if (args.test_area == 'all') or (test_area == args.test_area):
-            test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=test_area),
+            test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=test_area, BASE_DIR=BASE_DIR),
                                      batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
             device = torch.device("cuda" if args.cuda else "cpu")
