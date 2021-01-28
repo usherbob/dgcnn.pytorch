@@ -820,7 +820,7 @@ class DGCNN_semseg(nn.Module):
         self.conv2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
                                    self.bn2,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv2d(64 * 2, 64, kernel_size=1, bias=False),
+        self.conv3 = nn.Sequential(nn.Conv2d(64 * 2 * 2, 64, kernel_size=1, bias=False),
                                    self.bn3,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
@@ -870,7 +870,7 @@ class DGCNN_semseg(nn.Module):
         # node2, node_feature_2 = self.pool1(xyz, x2)  # (batch_size, 64, num_points//4) -> (batch_size, 64, num_points//16) 128
         node_features = x2[:, :, :self.args.num_points // 16]
         node2 = node1[:, :, :self.args.num_points // 16]
-        node_features_agg = aggregate(xyz, node2, x2, self.k // 4)
+        node_features_agg = aggregate(node1, node2, x2, self.k // 4)
         node_feature_2 = torch.cat((node_features, node_features_agg), dim=1)
 
         x = get_graph_feature(node_feature_2, k=self.k//4)  # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k)
