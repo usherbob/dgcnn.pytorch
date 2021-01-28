@@ -502,7 +502,7 @@ class DGCNN_scan(nn.Module):
         x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
         x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        x = unpool(node1_static, xyz, x)
+        x = unpool(node1, xyz, x)
         # print('shape of x2: {}'.format(x2.shape))
         # print('shape of x: {}'.format(x.shape))
         x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points)
