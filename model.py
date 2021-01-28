@@ -238,7 +238,7 @@ class PointNet_scan(nn.Module):
         self.dp3 = nn.Dropout(p=args.dropout)
         self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
-        self.pool1 = Pool(args.num_points // 4, 128, 0.2)
+        # self.pool1 = Pool(args.num_points // 4, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims * 2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -257,7 +257,10 @@ class PointNet_scan(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+
+        node1 = xyz[:, :, :self.args.num_points//4]
+        node_features_1 = x_t1_[:, :, :self.args.num_points//4]
+        # node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
         node_features_agg = aggregate(xyz, node1, x_t1_, 20)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -300,7 +303,7 @@ class PointNet_scan(nn.Module):
 
         logits_seg = self.conv10(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
-        return logits_cls, logits_seg, node1, node1_static
+        return logits_cls, logits_seg, node1
 
 
 class DGCNN_cls(nn.Module):
@@ -440,7 +443,6 @@ class DGCNN_scan(nn.Module):
         self.dp3 = nn.Dropout(p=args.dropout)
         self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
-        self.pool1 = Pool(args.num_points // 4, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims * 2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -464,7 +466,9 @@ class DGCNN_scan(nn.Module):
         # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+        node1 = xyz[:, :, :self.args.num_points//4]
+        node_features_1 = x_t1_[:, :, :self.args.num_points//4]
+        # node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
         node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
         x = torch.cat((node_features_1, node_features_agg), dim=1)
 
@@ -510,7 +514,7 @@ class DGCNN_scan(nn.Module):
 
         logits_seg = self.conv10(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
-        return logits_cls, logits_seg, node1, node1_static
+        return logits_cls, logits_seg, node1
 
 
 class Transform_Net(nn.Module):
@@ -900,4 +904,4 @@ class DGCNN_semseg(nn.Module):
         x = torch.cat((x, x1), dim=1)  # (batch_size, 128+64, num_points)
         x = self.conv11_m(x)  # (batch_size, 128+64, num_points) -> (batch_size, seg_num_all, num_points)
 
-        return x
+        return x, node1, node2
