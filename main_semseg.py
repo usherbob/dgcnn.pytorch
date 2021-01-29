@@ -107,10 +107,10 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            seg_pred, ret, node1, node1_static = model(data)
+            seg_pred, ret, node1, node1_static, node2, node2_static = model(data)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data[:, :3, :])
+            loss_cd = compute_chamfer_distance(node1, data[:, :3, :]) + compute_chamfer_distance(node2, node1_static)
             loss_mi = mi_loss(ret)
             loss = loss_cls + loss_mi + args.cd_weights * loss_cd
             loss.backward()
@@ -173,10 +173,10 @@ def train(args, io):
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred, ret, node1, node1_static = model(data)
+                seg_pred, ret, node1, node1_static, node2, node2_static = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data[:, :3, :])
+                loss_cd = compute_chamfer_distance(node1, data[:, :3, :]) + compute_chamfer_distance(node2, node1_static)
                 loss_mi = mi_loss(ret)
                 loss = loss_cls + loss_mi + args.cd_weights * loss_cd
                 pred = seg_pred.max(dim=2)[1]
@@ -243,7 +243,7 @@ def test(args, io):
                 batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
-                seg_pred, ret, node1, node1_static = model(data)
+                seg_pred, ret, node1, node1_static, node2, node2_static = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 pred = seg_pred.max(dim=2)[1]
                 seg_np = seg.cpu().numpy()
@@ -260,6 +260,9 @@ def test(args, io):
                         np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node1_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node1_static[i, :, :].detach().cpu().numpy())
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node2_%04d.npy' % (
+                            args.exp_name, batch_count * args.test_batch_size + i),
+                                node2_static[i, :, :].detach().cpu().numpy())
 
             test_true_cls = np.concatenate(test_true_cls)
             test_pred_cls = np.concatenate(test_pred_cls)

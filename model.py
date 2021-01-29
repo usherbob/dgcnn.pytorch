@@ -897,4 +897,4 @@ class DGCNN_semseg(nn.Module):
         x = torch.cat((x, x1), dim=1)  # (batch_size, 128+64, num_points)
         x = self.conv11_m(x)  # (batch_size, 128+64, num_points) -> (batch_size, seg_num_all, num_points)
 
-        return x, ret, node2, node2_static
+        return x, ret, node1, node1_static, node2, node2_static
