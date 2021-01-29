@@ -256,7 +256,7 @@ def test(args, io):
                     for i in range(data.shape[0]):
                         np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node0_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
-                                data[i, -3:, :].detach().cpu().numpy())
+                                data[i, :3, :].detach().cpu().numpy())
                         np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node1_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
                                 node1_static[i, :, :].detach().cpu().numpy())
