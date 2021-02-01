@@ -168,8 +168,10 @@ def train(args, io):
         test_pred_cls = []
         test_true_seg = []
         test_pred_seg = []
+        batch_count = 0
         with torch.no_grad():
             for data, seg in test_loader:
+                batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
@@ -191,6 +193,17 @@ def train(args, io):
                 test_pred_cls.append(pred_np.reshape(-1))
                 test_true_seg.append(seg_np)
                 test_pred_seg.append(pred_np)
+                if args.visu and batch_count % 5 == 0:
+                    for i in range(data.shape[0]):
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node0_%04d.npy' % (
+                        args.exp_name, batch_count * args.test_batch_size + i),
+                                data[i, :3, :].detach().cpu().numpy())
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node1_%04d.npy' % (
+                        args.exp_name, batch_count * args.test_batch_size + i),
+                                node1_static[i, :, :].detach().cpu().numpy())
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node2_%04d.npy' % (
+                            args.exp_name, batch_count * args.test_batch_size + i),
+                                node2_static[i, :, :].detach().cpu().numpy())
         test_true_cls = np.concatenate(test_true_cls)
         test_pred_cls = np.concatenate(test_pred_cls)
         test_acc = metrics.accuracy_score(test_true_cls, test_pred_cls)
