@@ -112,7 +112,7 @@ def train(args, io):
             loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
             loss_cd = compute_chamfer_distance(node1, data[:, :3, :]) + compute_chamfer_distance(node2, node1_static)
             loss_mi = mi_loss(ret)
-            loss = loss_cls + loss_mi + args.cd_weights * loss_cd
+            loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
@@ -180,7 +180,7 @@ def train(args, io):
                 loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
                 loss_cd = compute_chamfer_distance(node1, data[:, :3, :]) + compute_chamfer_distance(node2, node1_static)
                 loss_mi = mi_loss(ret)
-                loss = loss_cls + loss_mi + args.cd_weights * loss_cd
+                loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -357,6 +357,8 @@ if __name__ == "__main__":
                         help='visualize atp selection')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
+    parser.add_argument('--mi_weights', type=float, default=1.0, metavar='LR',
+                        help='weights of mi_loss')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
