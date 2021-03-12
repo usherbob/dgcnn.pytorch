@@ -629,8 +629,11 @@ class DGCNN_partseg(nn.Module):
         x = self.conv3(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x = self.conv4(x)                                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x2 = F.leaky_relu(x2+x_p1, negative_slope=0.2)      # (batch_size, 64, num_points//4)
-
+        if self.args.res:
+            x2 = F.leaky_relu(x2+x_p1, negative_slope=0.2)      # (batch_size, 64, num_points//4)
+        else:
+            x2 = F.leaky_relu(x2, negative_slope=0.2)      # (batch_size, 64, num_points//4)
+         
         # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
         # node_feature_2, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
         node_feature_2 = x2[:, :, :self.args.num_points//16]
@@ -642,7 +645,10 @@ class DGCNN_partseg(nn.Module):
         x = get_graph_feature(x_p2, k=self.k//4)              # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
         x = self.conv5(x)                                  # (batch_size, 128*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x3 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x3 = F.leaky_relu(x3+x_p2, negative_slope=0.2)
+        if self.args.res:
+            x3 = F.leaky_relu(x3+x_p2, negative_slope=0.2)
+        else:
+            x3 = F.leaky_relu(x3, negative_slope=0.2)
 
         # node_feature_3, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
         node_feature_3 = x3[:, :, :self.args.num_points // 64]
@@ -654,8 +660,11 @@ class DGCNN_partseg(nn.Module):
         x = get_graph_feature(x_p3, k=self.k//8)             # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
         x = self.conv6(x)                                  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
         x4 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x4 = F.leaky_relu(x4+x_p3, negative_slope=0.2)
-
+        if self.args.res:
+            x4 = F.leaky_relu(x4+x_p3, negative_slope=0.2)
+        else:
+            x4 = F.leaky_relu(x4, negative_slope=0.2)
+        
         x = torch.reshape(x4, (x.shape[0], -1, 1))
         x = self.conv6_m(x)                                 # (batch_size, 64*4, 1) -> (batch_size, 1024, 1)
 

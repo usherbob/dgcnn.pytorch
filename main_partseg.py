@@ -349,6 +349,8 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp selection')
+    parser.add_argument('--res', type=bool, default=False,
+                        help='Turn on residual connection')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
     args = parser.parse_args()
