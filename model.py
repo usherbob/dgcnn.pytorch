@@ -540,8 +540,10 @@ class DGCNN_partseg(nn.Module):
         self.bn3 = nn.BatchNorm2d(128)
         self.bn4 = nn.BatchNorm2d(128)
         self.bn5 = nn.BatchNorm2d(256)
+        self.bn5_m = nn.BatchNorm2d(256)
         self.bn6 = nn.BatchNorm2d(512)
-        self.bn6_m = nn.BatchNorm1d(args.emb_dims)
+        self.bn6_m = nn.BatchNorm2d(512)
+        self.bn6_mm = nn.BatchNorm1d(args.emb_dims)
         self.bn7 = nn.BatchNorm1d(64)
         self.bn8 = nn.BatchNorm1d(512)
         self.bn9 = nn.BatchNorm1d(256)
@@ -573,14 +575,20 @@ class DGCNN_partseg(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
+        self.conv5_m = nn.Sequential(nn.Conv2d(256*2, 256, kernel_size=1, bias=False),
+                                   self.bn5_m,
+                                   nn.LeakyReLU(negative_slope=0.2))
         self.conv3_p = nn.Sequential(nn.Conv1d(256*2, 512, kernel_size=1, bias=False),
                                      self.bn3_p,
                                      nn.LeakyReLU(negative_slope=0.2))
         self.conv6 = nn.Sequential(nn.Conv2d(512*2, 512, kernel_size=1, bias=False),
                                    self.bn6,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv6_m = nn.Sequential(nn.Conv1d(512*32, args.emb_dims, kernel_size=1, bias=False),
+        self.conv6_m = nn.Sequential(nn.Conv2d(512*2, 512, kernel_size=1, bias=False),
                                    self.bn6_m,
+                                   nn.LeakyReLU(negative_slope=0.2))
+        self.conv6_mm = nn.Sequential(nn.Conv1d(512*32, args.emb_dims, kernel_size=1, bias=False),
+                                   self.bn6_mm,
                                    nn.LeakyReLU(negative_slope=0.2))
         self.conv7 = nn.Sequential(nn.Conv1d(16, 64, kernel_size=1, bias=False),
                                    self.bn7,
@@ -645,6 +653,9 @@ class DGCNN_partseg(nn.Module):
         # Enc3
         x = get_graph_feature(x_p2, k=self.k//4)           # (batch_size, 256, num_points//16) -> (batch_size, 256*2, num_points//16, k//4)
         x = self.conv5(x)                                  # (batch_size, 256*2, num_points//16, k//4) -> (batch_size, 256, num_points//16, k//4)
+        x = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 256, num_points//16, k//4) -> (batch_size, 256, num_points//16)
+        x = get_graph_feature(x, k=self.k // 4)            # (batch_size, 256, num_points//16) -> (batch_size, 256*2, num_points//16, k//4)
+        x = self.conv5_m(x)                                # (batch_size, 256*2, num_points//16, k//4) -> (batch_size, 256, num_points//16, k//4)
         x3 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 256, num_points//16, k//4) -> (batch_size, 256, num_points//16)
         if self.args.res:
             x3 = F.leaky_relu(x3+x_p2, negative_slope=0.2)
@@ -658,8 +669,12 @@ class DGCNN_partseg(nn.Module):
         x = torch.cat((node_feature_3, node_features_agg), dim=1) # (batch_size, 256*2, num_points//64)
         x_p3 = self.conv3_p(x)                                    # (batch_size, 512, num_points//64)
 
+        # Enc4
         x = get_graph_feature(x_p3, k=self.k//8)           # (batch_size, 512, num_points//64) -> (batch_size, 512*2, num_points//64, k//8)
         x = self.conv6(x)                                  # (batch_size, 512*2, num_points//64, k//8) -> (batch_size, 512, num_points//64, k//8)
+        x = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 512, num_points//64, k//8) -> (batch_size, 512, num_points//64)
+        x = get_graph_feature(x, k=self.k // 8)            # (batch_size, 512, num_points//64) -> (batch_size, 512*2, num_points//64, k//8)
+        x = self.conv6_m(x)                                  # (batch_size, 512*2, num_points//64, k//8) -> (batch_size, 512, num_points//64, k//8)
         x4 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 512, num_points//64, k//8) -> (batch_size, 512, num_points//64)
         if self.args.res:
             x4 = F.leaky_relu(x4+x_p3, negative_slope=0.2)
@@ -667,7 +682,7 @@ class DGCNN_partseg(nn.Module):
             x4 = F.leaky_relu(x4, negative_slope=0.2)
         
         x = torch.reshape(x4, (x.shape[0], -1, 1))
-        x = self.conv6_m(x)                                 # (batch_size, 512*num_points//64, 1) -> (batch_size, 1024, 1)
+        x = self.conv6_mm(x)                                 # (batch_size, 512*num_points//64, 1) -> (batch_size, 1024, 1)
 
         l = l.view(batch_size, -1, 1)                       # (batch_size, num_categoties, 1)
         l = self.conv7(l)                                   # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
