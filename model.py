@@ -611,6 +611,7 @@ class DGCNN_partseg(nn.Module):
         # Enc1
         x = get_graph_feature(x, k=self.k)                 # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
         x = self.conv1(x)                                  # (batch_size, 3*2, num_points, k) -> (batch_size, 64, num_points, k)
+        x = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
         x = get_graph_feature(x, k=self.k)                 # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv2(x)                                  # (batch_size, 64*2, num_points, k) -> (batch_size, 64, num_points, k)
         x1 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
@@ -625,6 +626,7 @@ class DGCNN_partseg(nn.Module):
         # Enc2
         x = get_graph_feature(x_p1, k=self.k//2)           # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
         x = self.conv3(x)                                  # (batch_size, 128*2, num_points//4, k//2) -> (batch_size, 128, num_points//4, k//2)
+        x = x.max(dim=-1, keepdim=False)[0]                # (batch_size, 128, num_points, k) -> (batch_size, 128, num_points)
         x = get_graph_feature(x, k=self.k//2)              # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
         x = self.conv4(x)                                  # (batch_size, 128*2, num_points//4, k//2) -> (batch_size, 128, num_points//4, k//2)
         x2 = x.max(dim=-1, keepdim=False)[0]               # (batch_size, 128, num_points//4, k//2) -> (batch_size, 128, num_points//4)
