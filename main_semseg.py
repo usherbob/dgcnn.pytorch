@@ -26,15 +26,15 @@ import sklearn.metrics as metrics
 
 
 def _init_():
-    if not os.path.exists(BASE_DIR+'/ckpt/semseg'):
-        os.makedirs(BASE_DIR+'/ckpt/semseg')
-    if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name):
-        os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name)
-    if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'models'):
-        os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'models')
-    if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'visu'):
-        os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'visu')
-    os.system('cp main_semseg.py ' + BASE_DIR + '/ckpt/semseg'+'/'+args.exp_name+'/'+'main_semseg.py.backup')
+    if not os.path.exists(BASE_DIR + '/ckpt/semseg'):
+        os.makedirs(BASE_DIR + '/ckpt/semseg')
+    if not os.path.exists(BASE_DIR + '/ckpt/semseg/'+args.exp_name):
+        os.makedirs(BASE_DIR + '/ckpt/semseg/'+args.exp_name)
+    if not os.path.exists(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'models'):
+        os.makedirs(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'models')
+    if not os.path.exists(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'visu'):
+        os.makedirs(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'visu')
+    os.system('cp main_semseg.py ' + BASE_DIR + '/ckpt/semseg' + '/'+args.exp_name+'/'+'main_semseg.py.backup')
     os.system('cp model.py ' + BASE_DIR + '/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + BASE_DIR + '/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
     os.system('cp data.py ' + BASE_DIR + '/ckpt/semseg' + '/' + args.exp_name + '/' + 'data.py.backup')
@@ -107,20 +107,14 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            seg_pred, ret, node1, node1_static = model(data)
+            seg_pred, node1, node2 = model(data)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data[:, :3, :])
-            loss_mi = mi_loss(ret)
-            loss = loss_cls + loss_mi #+ loss_cd
-            loss.backward()
+            loss_cls.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
             count += batch_size
-            train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
-            train_cd_loss += loss_cd.item() * batch_size
-            train_mi_loss += loss_mi.item() * batch_size
             seg_np = seg.cpu().numpy()                  # (batch_size, num_points)
             pred_np = pred.detach().cpu().numpy()       # (batch_size, num_points)
             train_true_cls.append(seg_np.reshape(-1))       # (batch_size * num_points)
@@ -143,12 +137,9 @@ def train(args, io):
         train_pred_seg = np.concatenate(train_pred_seg, axis=0)
         train_ious = calculate_sem_IoU(train_pred_seg, train_true_seg)
         duration = time.time() - start
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, loss_mi: %.6f, train acc: %.6f, ' \
+        outstr = 'Train %d, loss_cls: %.6f, train acc: %.6f, ' \
                  'train avg acc: %.6f, train iou: %.6f, time usage: %d s'                         % (epoch,
-                                                                                                  train_loss*1.0/count,
                                                                                                   train_cls_loss*1.0/count,
-                                                                                                  train_cd_loss*1.0/count,
-                                                                                                  train_mi_loss*1.0/count,
                                                                                                   train_acc,
                                                                                                   avg_per_class_acc,
                                                                                                   np.mean(train_ious),
@@ -173,17 +164,11 @@ def train(args, io):
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred, ret, node1, node1_static = model(data)
+                seg_pred, node1, node2 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data[:, :3, :])
-                loss_mi = mi_loss(ret)
-                loss = loss_cls + loss_mi #+ loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
-                test_loss += loss.item() * batch_size
-                test_cd_loss += loss_cd.item() * batch_size
-                test_mi_loss += loss_mi.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
                 seg_np = seg.cpu().numpy()
                 pred_np = pred.detach().cpu().numpy()
@@ -198,18 +183,15 @@ def train(args, io):
         test_true_seg = np.concatenate(test_true_seg, axis=0)
         test_pred_seg = np.concatenate(test_pred_seg, axis=0)
         test_ious = calculate_sem_IoU(test_pred_seg, test_true_seg)
-        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_cd:%.6f, loss_mi:%.6f, test acc: %.6f, test avg acc: %.6f, test iou: %.6f' % (epoch,
-                                                                                              test_loss*1.0/count,
+        outstr = 'Test %d, loss_cls: %.6f, test acc: %.6f, test avg acc: %.6f, test iou: %.6f' % (epoch,
                                                                                               test_cls_loss*1.0/count,
-                                                                                              test_cd_loss*1.0/count,
-                                                                                              test_mi_loss*1.0/count,
                                                                                               test_acc,
                                                                                               avg_per_class_acc,
                                                                                               np.mean(test_ious))
         io.cprint(outstr)
         if np.mean(test_ious) >= best_test_iou:
             best_test_iou = np.mean(test_ious)
-            torch.save(model.state_dict(), BASE_DIR+'/ckpt/semseg/%s/models/model_%s.t7' % (args.exp_name, args.test_area))
+            torch.save(model.state_dict(), BASE_DIR + '/ckpt/semseg/%s/models/model_%s.t7' % (args.exp_name, args.test_area))
 
 
 def test(args, io):
@@ -243,7 +225,7 @@ def test(args, io):
                 batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
-                seg_pred, ret, node1, node1_static = model(data)
+                seg_pred, node1, node2 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 pred = seg_pred.max(dim=2)[1]
                 seg_np = seg.cpu().numpy()
@@ -254,12 +236,15 @@ def test(args, io):
                 test_pred_seg.append(pred_np)
                 if args.visu and batch_count % 5 == 0:
                     for i in range(data.shape[0]):
-                        np.save(BASE_DIR+'/ckpt/semseg/%s/visu/node0_%04d.npy' % (
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node0_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
-                                data[i, -3:, :].detach().cpu().numpy())
-                        np.save(BASE_DIR+'/ckpt/semseg/%s/visu/node1_%04d.npy' % (
+                                data[i, :3, :].detach().cpu().numpy())
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node1_%04d.npy' % (
                         args.exp_name, batch_count * args.test_batch_size + i),
-                                node1_static[i, :, :].detach().cpu().numpy())
+                                node1[i, :, :].detach().cpu().numpy())
+                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node2_%04d.npy' % (
+                            args.exp_name, batch_count * args.test_batch_size + i),
+                                node2[i, :, :].detach().cpu().numpy())
 
             test_true_cls = np.concatenate(test_true_cls)
             test_pred_cls = np.concatenate(test_pred_cls)
@@ -345,7 +330,7 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream(BASE_DIR+'/ckpt/semseg/' + args.exp_name + '/run.log')
+    io = IOStream(BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
