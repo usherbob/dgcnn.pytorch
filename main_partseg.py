@@ -27,16 +27,16 @@ seg_num = [4, 2, 2, 4, 4, 3, 3, 2, 4, 2, 6, 2, 3, 3, 3, 3]
 index_start = [0, 4, 6, 8, 12, 16, 19, 22, 24, 28, 30, 36, 38, 41, 44, 47]
 
 def _init_():
-    ckpt_dir = '/root/ckpt/partseg'
+    ckpt_dir = BASE_DIR + '/ckpt/cls'
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
-    if not os.path.exists(ckpt_dir+'/'+args.exp_name):
-        os.makedirs(ckpt_dir+'/'+args.exp_name)
-    if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'models'):
-        os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'models')
-    if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'visu'):
-        os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'visu')
-    os.system('cp main_partseg.py '+ckpt_dir+'/'+args.exp_name+'/'+'main_partseg.py.backup')
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name):
+        os.makedirs(ckpt_dir + '/' + args.exp_name)
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'models'):
+        os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'models')
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'visu'):
+        os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'visu')
+    os.system('cp main_cls.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'main_cls.py.backup')
     os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
@@ -66,13 +66,13 @@ def calculate_shape_IoU(pred_np, seg_np, label, class_choice):
 
 
 def train(args, io):
-    train_dataset = ShapeNetPart(partition='trainval', num_points=args.num_points, class_choice=args.class_choice)
+    train_dataset = ShapeNetPart(partition='trainval', num_points=args.num_points, class_choice=args.class_choice, BASE_DIR=BASE_DIR)
     if (len(train_dataset) < 100):
         drop_last = False
     else:
         drop_last = True
     train_loader = DataLoader(train_dataset, num_workers=8, batch_size=args.batch_size, shuffle=True, drop_last=drop_last)
-    test_loader = DataLoader(ShapeNetPart(partition='test', num_points=args.num_points, class_choice=args.class_choice), 
+    test_loader = DataLoader(ShapeNetPart(partition='test', num_points=args.num_points, class_choice=args.class_choice, BASE_DIR=BASE_DIR),
                             num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
     
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -249,7 +249,7 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(ShapeNetPart(partition='test', num_points=args.num_points, class_choice=args.class_choice),
+    test_loader = DataLoader(ShapeNetPart(partition='test', num_points=args.num_points, class_choice=args.class_choice, BASE_DIR=BASE_DIR),
                              batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -290,16 +290,18 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
-        if args.visu and batch_count % 5 == 0:
-            for i in range(data.shape[0]):
-                np.save('/root/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        data[i, :, :].detach().cpu().numpy())
-                np.save('/root/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        node1_static[i, :, :].detach().cpu().numpy())
-                np.save('/root/ckpt/partseg/%s/visu/node2_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        node2_static[i, :, :].detach().cpu().numpy())
-                np.save('/root/ckpt/partseg/%s/visu/node3_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-                        node3[i, :, :].detach().cpu().numpy())
+        # if args.visu and batch_count % 5 == 0:
+        #     for i in range(data.shape[0]):
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+        #                 data[i, :, :].detach().cpu().numpy())
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+        #                 node1_static[i, :, :].detach().cpu().numpy())
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%04d.npy' % (
+        #         args.exp_name, batch_count * args.test_batch_size + i),
+        #                 node2_static[i, :, :].detach().cpu().numpy())
+        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%04d.npy' % (
+        #         args.exp_name, batch_count * args.test_batch_size + i),
+        #                 node3_static[i, :, :].detach().cpu().numpy())
 
     test_true_cls = np.concatenate(test_true_cls)
     test_pred_cls = np.concatenate(test_pred_cls)
@@ -318,6 +320,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Part Segmentation')
+    parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
+                        help='Path to data and ckpt')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
@@ -364,9 +368,11 @@ if __name__ == "__main__":
                         help='visualize atp selection')
     args = parser.parse_args()
 
+    BASE_DIR = args.base_dir
+
     _init_()
 
-    io = IOStream('/root/ckpt/partseg/' + args.exp_name + '/run.log')
+    io = IOStream(BASE_DIR + '/ckpt/cls/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

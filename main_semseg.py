@@ -25,18 +25,19 @@ import sklearn.metrics as metrics
 
 
 def _init_():
-    if not os.path.exists('/root/ckpt/semseg'):
-        os.makedirs('/root/ckpt/semseg')
-    if not os.path.exists('/root/ckpt/semseg/'+args.exp_name):
-        os.makedirs('/root/ckpt/semseg/'+args.exp_name)
-    if not os.path.exists('/root/ckpt/semseg/'+args.exp_name+'/'+'models'):
-        os.makedirs('/root/ckpt/semseg/'+args.exp_name+'/'+'models')
-    if not os.path.exists('/root/ckpt/semseg/'+args.exp_name+'/'+'visu'):
-        os.makedirs('/root/ckpt/semseg/'+args.exp_name+'/'+'visu')
-    os.system('cp main_semseg.py /root/ckpt/semseg'+'/'+args.exp_name+'/'+'main_semseg.py.backup')
-    os.system('cp model.py /root/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
-    os.system('cp util.py /root/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
-    os.system('cp data.py /root/ckpt/semseg' + '/' + args.exp_name + '/' + 'data.py.backup')
+    ckpt_dir = BASE_DIR + '/ckpt/cls'
+    if not os.path.exists(ckpt_dir):
+        os.makedirs(ckpt_dir)
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name):
+        os.makedirs(ckpt_dir + '/' + args.exp_name)
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'models'):
+        os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'models')
+    if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'visu'):
+        os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'visu')
+    os.system('cp main_cls.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'main_cls.py.backup')
+    os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
+    os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
+    os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 
 def calculate_sem_IoU(pred_np, seg_np):
@@ -52,9 +53,9 @@ def calculate_sem_IoU(pred_np, seg_np):
 
 
 def train(args, io):
-    train_loader = DataLoader(S3DIS(partition='train', num_points=args.num_points, test_area=args.test_area), 
+    train_loader = DataLoader(S3DIS(partition='train', num_points=args.num_points, test_area=args.test_area, BASE_DIR=BASE_DIR),
                               num_workers=8, batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=args.test_area), 
+    test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=args.test_area, BASE_DIR=BASE_DIR),
                             num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -208,7 +209,7 @@ def test(args, io):
     for test_area in range(1,7):
         test_area = str(test_area)
         if (args.test_area == 'all') or (test_area == args.test_area):
-            test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=test_area),
+            test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=test_area, BASE_DIR=BASE_DIR),
                                      batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
             device = torch.device("cuda" if args.cuda else "cpu")
@@ -282,6 +283,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Part Segmentation')
+    parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
+                        help='Path to data and ckpt')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
@@ -326,9 +329,11 @@ if __name__ == "__main__":
                         help='visualize atp selection')
     args = parser.parse_args()
 
+    BASE_DIR = args.base_dir
+
     _init_()
 
-    io = IOStream('/root/ckpt/semseg/' + args.exp_name + '/run.log')
+    io = IOStream(BASE_DIR + '/ckpt/cls/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
