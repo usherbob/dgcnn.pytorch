@@ -5,7 +5,7 @@
       <paths name="AIMAX">
         <serverdata>
           <mappings>
-            <mapping deploy="/code/dgcnn.pytorch" local="$PROJECT_DIR$" web="/code/dgcnn.pytorch" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

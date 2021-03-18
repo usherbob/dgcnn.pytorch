@@ -141,19 +141,53 @@ class Discriminator(nn.Module):
         return logits, logits[:, :v // 2]
 
 
-class EdgeConv(nn.Module):
-    def __init__(self, k, in_dim, out_dim):
+class MLP(nn.Module):
+    def __init__(self, in_dim, out_dim):
         super().__init__()
-        self.k = k
-        self.conv = nn.Sequential(nn.Conv2d(in_dim * 2, out_dim, kernel_size=1, bias=False),
-                                  nn.BatchNorm2d(out_dim),
-                                  nn.LeakyReLU(negative_slope=0.2))
+        self.conv = nn.Sequential(nn.Conv1d(in_dim, out_dim, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(out_dim),
+                                  nn.ReLU())
 
     def forward(self, x):
-        x = get_graph_feature(x, k=self.k)
         x = self.conv(x)
+        return x
+
+class EdgeConv(nn.Module):
+    def __init__(self, num_neighs, dims):
+        super().__init__()
+        self.num_neighs = num_neighs
+        last_dim = dims[0]
+        self.conv_modules = []
+        for i in range(1, len(dims)):
+            self.conv_modules.append(nn.Sequential(nn.Conv2d(last_dim * 2, dims[i], kernel_size=1, bias=False),
+                                      nn.BatchNorm2d(dims[i]),
+                                      nn.LeakyReLU(negative_slope=0.2)))
+            last_dim = dims[i]
+
+    def forward(self, x):
+        x = get_graph_feature(x, k=self.num_neighs)
+        for conv in self.conv_modules:
+            x = conv(x)
         x = x.max(dim=-1, keepdim=False)[0]
         return x
+
+class RandPool(nn.Module):
+    def __init__(self, num_sample, num_agg, num_channels):
+        '''
+        num_sample: Number of sampled points
+        num_agg: Number of aggregated points
+        '''
+        self.num_sample = num_sample
+        self.num_agg = num_agg
+        self.conv = MLP(num_channels * 2, num_channels)
+
+    def forward(self, input_coords, input_feats):
+        pool_feats = input_feats[:, :, :self.num_sample]
+        pool_coords = input_coords[:, :, :self.num_sample]
+        agg_features = aggregate(input_coords, pool_coords, input_feats, self.num_agg)
+        pool_feats = torch.cat((pool_feats, agg_features), dim=1)
+        pool_feats = self.conv(pool_feats)
+        return pool_coords, pool_feats
 
 
 class IndexSelect(nn.Module):
