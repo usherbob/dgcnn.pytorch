@@ -747,12 +747,12 @@ class DGCNN_semseg(nn.Module):
         self.conv11_m = nn.Conv1d(128 + 64, 13, kernel_size=1, bias=False)
 
     def forward(self, x):
-        xyz = x[:, :3, :]  # use normalized xyz
+        xyz = x[:, :3, :]                       # use normalized xyz
 
-        x = get_graph_feature(x, k=self.k)  # (batch_size, 9, num_points) -> (batch_size, 9*2, num_points, k)
-        x = self.conv1(x)  # (batch_size, 9*2, num_points, k) -> (batch_size, 64, num_points, k)
-        x = self.conv2(x)  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
-        x1 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        x = get_graph_feature(x, k=self.k)      # (batch_size, 9, num_points) -> (batch_size, 9*2, num_points, k)
+        x = self.conv1(x)                       # (batch_size, 9*2, num_points, k) -> (batch_size, 64, num_points, k)
+        x = self.conv2(x)                       # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
+        x1 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
         node_features = x1[:, :, :self.args.num_points // 4]
         node1 = xyz[:, :, :self.args.num_points // 4]
@@ -760,9 +760,9 @@ class DGCNN_semseg(nn.Module):
         node_feature_1 = torch.cat((node_features, node_features_agg), dim=1)  # (batch_size, 64, num_points//4)
 
         x = get_graph_feature(node_feature_1, k=self.k // 2)  # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
-        x = self.conv3(x)  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x = self.conv4(x)  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x2 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        x = self.conv3(x)                                     # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
+        x = self.conv4(x)                                     # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
+        x2 = x.max(dim=-1, keepdim=False)[0]                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
 
         node_features = x2[:, :, :self.args.num_points // 16]
         node2 = node1[:, :, :self.args.num_points // 16]
@@ -770,25 +770,25 @@ class DGCNN_semseg(nn.Module):
         node_feature_2 = torch.cat((node_features, node_features_agg), dim=1)  # (batch_size, 64, num_points//16)
 
         x = get_graph_feature(node_feature_2, k=self.k // 4)  # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k//4)
-        x = self.conv5(x)  # (batch_size, 64*2, num_points//16, k//4) -> (batch_size, 64, num_points//16, k//4)
-        x3 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//16, k//4) -> (batch_size, 64, num_points//16)
+        x = self.conv5(x)                                     # (batch_size, 64*2, num_points//16, k//4) -> (batch_size, 64, num_points//16, k//4)
+        x3 = x.max(dim=-1, keepdim=False)[0]                  # (batch_size, 64, num_points//16, k//4) -> (batch_size, 64, num_points//16)
 
-        x4 = self.conv6_m(x3)  # (batch_size, 64, num_points//16) -> (batch_size, emb_dims, num_points//16)
+        x4 = self.conv6_m(x3)                                 # (batch_size, 64, num_points//16) -> (batch_size, emb_dims, num_points//16)
 
-        x = self.conv8_m(x4)  # (batch_size, 1024, num_points//16) -> (batch_size, 256, num_points//16)
+        x = self.conv8_m(x4)                                  # (batch_size, 1024, num_points//16) -> (batch_size, 256, num_points//16)
         x = self.dp1(x)
 
-        x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//16)
-        x = self.conv9_m(x)  # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
+        x = torch.cat((x, x3), dim=1)                         # (batch_size, 256+64, num_points//16)
+        x = self.conv9_m(x)                                   # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
         x = self.dp2(x)
 
         x = unpool(node2, node1, x)
-        x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv10_m(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 128, num_points//4)
+        x = torch.cat((x, x2), dim=1)                         # (batch_size, 256+64, num_points//4)
+        x = self.conv10_m(x)                                  # (batch_size, 256+64, num_points//4) -> (batch_size, 128, num_points//4)
         x = self.dp3(x)
 
         x = unpool(node1, xyz, x)
-        x = torch.cat((x, x1), dim=1)  # (batch_size, 128+64, num_points)
-        x = self.conv11_m(x)  # (batch_size, 128+64, num_points) -> (batch_size, seg_num_all, num_points)
+        x = torch.cat((x, x1), dim=1)                         # (batch_size, 128+64, num_points)
+        x = self.conv11_m(x)                                  # (batch_size, 128+64, num_points) -> (batch_size, seg_num_all, num_points)
 
         return x, node1, node2
