@@ -534,28 +534,24 @@ class DGCNN_partseg(nn.Module):
         self.seg_num_all = seg_num_all
         self.k = args.k
 
-        self.pool1 = RandPool(self.args.num_points//4,  self.k//2, 64)
-        self.pool2 = RandPool(self.args.num_points//16, self.k//4, 64)
-        self.pool3 = RandPool(self.args.num_points//64, self.k//8, 64)
+        self.pool1 = RandPool(self.args.num_points//4,  self.k, 64)
+        self.pool2 = RandPool(self.args.num_points//16, self.k, 64)
+        self.pool3 = RandPool(self.args.num_points//64, self.k, 64)
 
         self.ec1 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
         self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
-        self.ec3 = EdgeConv(num_neighs=self.k//2, dims=[64, 64, 64])
-        self.ec4 = EdgeConv(num_neighs=self.k//2, dims=[64, 64, 64])
-        self.ec5 = EdgeConv(num_neighs=self.k//4, dims=[64, 64])
-        self.ec6 = EdgeConv(num_neighs=self.k//4, dims=[64, 64])
-        self.ec7 = EdgeConv(num_neighs=self.k//8, dims=[64, 64])
-        self.ec8 = EdgeConv(num_neighs=self.k//8, dims=[64, 64])
+        self.ec3 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
+        self.ec4 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
 
         self.label_conv = MLP([16, 64])
 
-        self.pn9 = MLP([64, 256])
-        self.pn10 = MLP([256+64, 256])
-        self.pn11 = MLP([256+64, 256])
-        self.pn12 = MLP([256+64, 256])
-        self.pn13 = MLP([256+64, 128])
+        self.pn5 = MLP([64, 256])
+        self.pn6 = MLP([256+64, 256])
+        self.pn7 = MLP([256+64, 256])
+        self.pn8 = MLP([256+64, 256])
+        self.pn9 = MLP([256+64, 128])
         self.dp = nn.Dropout(p=args.dropout)
-        self.conv14 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
+        self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
 
     def forward(self, x, l):
@@ -640,7 +636,7 @@ class DGCNN_semseg(nn.Module):
         self.pn15 = MLP([256 + 64, 256, 256])
         self.pn16 = MLP([256 + 64, 256, 128])
         self.dp = nn.Dropout(p=args.dropout)
-        self.conv17 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
+        self.conv17 = nn.Conv1d(128, 13, kernel_size=1, bias=False)
 
     def forward(self, x):
         node0 = x[:, :3, :]                       # use normalized xyz
