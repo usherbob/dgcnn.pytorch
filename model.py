@@ -558,27 +558,23 @@ class DGCNN_partseg(nn.Module):
         batch_size = x.size(0)
         node0 = copy.deepcopy(x)
 
-        x  = self.ec1(x)
-        x0 = self.ec2(x)
+        x0  = self.ec1(x)
 
         node1, node1_feats = self.pool1(node0, x0)
 
-        x  = self.ec3(node1_feats)
-        x1 = self.ec4(x)
+        x1  = self.ec2(node1_feats)
         if self.args.res:
             x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
         node2, node2_feats = self.pool2(node1, x1)
 
-        x  = self.ec5(node2_feats)
-        x2 = self.ec6(x)
+        x2  = self.ec3(node2_feats)
         if self.args.res:
             x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
         node3, node3_feats = self.pool3(node2, x2)
 
-        x  = self.ec7(node3_feats)
-        x3 = self.ec8(x)
+        x3  = self.ec4(node3_feats)
         if self.args.res:
             x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
@@ -586,24 +582,24 @@ class DGCNN_partseg(nn.Module):
         l = self.label_conv(l)             # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
         l = l.repeat(1, 1, x3.shape[-1])   # (batch_size, 64, num_points//64)
 
-        x = self.pn9(x3)                   # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
+        x = self.pn5(x3)                   # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
         x = torch.cat((x, l), dim=1)       # (batch_size, 256+64, num_points//64)
-        x = self.pn10(x)                   # (batch_size, 256+64, num_points//64) -> (batch_size, 256, num_points//64)
+        x = self.pn6(x)                   # (batch_size, 256+64, num_points//64) -> (batch_size, 256, num_points//64)
 
         x = unpool(node3, node2, x)        # (batch_size, 64, num_points//16)
         x = torch.cat((x, x2), dim=1)      # (batch_size, 256+64, num_points//16)
-        x = self.pn11(x)                   # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
+        x = self.pn7(x)                   # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
 
         x = unpool(node2, node1, x)        # (batch_size, 64, num_points//4)
         x = torch.cat((x, x1), dim=1)      # (batch_size, 256+64, num_points//4)
-        x = self.pn12(x)                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.pn8(x)                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
         x = unpool(node1, node0, x)          # (batch_size, 64, num_points)
         x = torch.cat((x, x0), dim=1)      # (batch_size, 256+64, num_points)
-        x = self.pn13(x)                   # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
+        x = self.pn9(x)                   # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
 
         x = self.dp(x)
-        x = self.conv14(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
+        x = self.conv10(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
         return x
 
