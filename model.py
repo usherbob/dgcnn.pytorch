@@ -541,7 +541,7 @@ class DGCNN_partseg(nn.Module):
         self.ec1 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
         self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
         self.ec3 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
-        self.ec4 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
+        self.ec4 = EdgeConv(num_neighs=self.k//2,    dims=[64, 64, 64])
 
         self.label_conv = MLP([16, 64])
 
