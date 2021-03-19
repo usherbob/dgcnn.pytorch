@@ -107,7 +107,7 @@ def train(args, io):
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            seg_pred, node1, node2 = model(data)
+            seg_pred, node1, node2, node3 = model(data)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
             loss_cls.backward()
@@ -164,7 +164,7 @@ def train(args, io):
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                seg_pred, node1, node2 = model(data)
+                seg_pred, node1, node2, node3 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
                 pred = seg_pred.max(dim=2)[1]
@@ -225,7 +225,7 @@ def test(args, io):
                 batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
-                seg_pred, node1, node2 = model(data)
+                seg_pred, node1, node2, node3 = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 pred = seg_pred.max(dim=2)[1]
                 seg_np = seg.cpu().numpy()
@@ -324,6 +324,8 @@ if __name__ == "__main__":
                         help='Pretrained model root')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp selection')
+    parser.add_argument('--res', type=bool, default=False,
+                        help='Turn on residual connection')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir

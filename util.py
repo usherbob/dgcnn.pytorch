@@ -142,48 +142,59 @@ class Discriminator(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, dims):
         super().__init__()
-        self.conv = nn.Sequential(nn.Conv1d(in_dim, out_dim, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(out_dim),
-                                  nn.ReLU())
+        last_dim = dims[0]
+        self.dims = dims
+        for i in range(1, len(dims)):
+            setattr(self, "conv_{:d}".format(i),
+                    nn.Sequential(nn.Conv1d(last_dim, dims[i], kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(dims[i]),
+                                  nn.ReLU()))
+            last_dim = dims[i]
+
 
     def forward(self, x):
-        x = self.conv(x)
+        for i in range(1, len(self.dims)):
+            x = getattr(self, 'conv_{:d}'.format(i))(x)
         return x
 
 class EdgeConv(nn.Module):
     def __init__(self, num_neighs, dims):
         super().__init__()
         self.num_neighs = num_neighs
-        last_dim = dims[0]
-        self.conv_modules = []
+        last_dim = dims[0] * 2
+        self.dims = dims
         for i in range(1, len(dims)):
-            self.conv_modules.append(nn.Sequential(nn.Conv2d(last_dim * 2, dims[i], kernel_size=1, bias=False),
+            setattr(self, "conv_{:d}".format(i),
+                    nn.Sequential(nn.Conv2d(last_dim, dims[i], kernel_size=1, bias=False),
                                       nn.BatchNorm2d(dims[i]),
                                       nn.LeakyReLU(negative_slope=0.2)))
             last_dim = dims[i]
 
     def forward(self, x):
         x = get_graph_feature(x, k=self.num_neighs)
-        for conv in self.conv_modules:
-            x = conv(x)
+        for i in range(1, len(self.dims)):
+            x = getattr(self, 'conv_{:d}'.format(i))(x)
         x = x.max(dim=-1, keepdim=False)[0]
         return x
 
 class RandPool(nn.Module):
     def __init__(self, num_sample, num_agg, num_channels):
+        super().__init__()
         '''
         num_sample: Number of sampled points
         num_agg: Number of aggregated points
         '''
         self.num_sample = num_sample
         self.num_agg = num_agg
-        self.conv = MLP(num_channels * 2, num_channels)
+        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
+                                  nn.ReLU())
 
     def forward(self, input_coords, input_feats):
-        pool_feats = input_feats[:, :, :self.num_sample]
         pool_coords = input_coords[:, :, :self.num_sample]
+        pool_feats = input_feats[:, :, :self.num_sample]
         agg_features = aggregate(input_coords, pool_coords, input_feats, self.num_agg)
         pool_feats = torch.cat((pool_feats, agg_features), dim=1)
         pool_feats = self.conv(pool_feats)

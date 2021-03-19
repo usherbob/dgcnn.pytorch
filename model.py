@@ -534,11 +534,11 @@ class DGCNN_partseg(nn.Module):
         self.seg_num_all = seg_num_all
         self.k = args.k
 
-        self.pool1 = RandPool(self.args.num_points//4,  self.k//2)
-        self.pool2 = RandPool(self.args.num_points//16, self.k//4)
-        self.pool3 = RandPool(self.args.num_points//64, self.k//8)
+        self.pool1 = RandPool(self.args.num_points//4,  self.k//2, 64)
+        self.pool2 = RandPool(self.args.num_points//16, self.k//4, 64)
+        self.pool3 = RandPool(self.args.num_points//64, self.k//8, 64)
 
-        self.ec1 = EdgeConv(num_neighs=self.k,    dims=[9, 64, 64])
+        self.ec1 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
         self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
         self.ec3 = EdgeConv(num_neighs=self.k//2, dims=[64, 64, 64])
         self.ec4 = EdgeConv(num_neighs=self.k//2, dims=[64, 64, 64])
@@ -547,14 +547,15 @@ class DGCNN_partseg(nn.Module):
         self.ec7 = EdgeConv(num_neighs=self.k//8, dims=[64, 64])
         self.ec8 = EdgeConv(num_neighs=self.k//8, dims=[64, 64])
 
-        self.label_conv = MLP(16, 64)
+        self.label_conv = MLP([16, 64])
 
-        self.pn9 = MLP(64, 256)
-        self.pn10 = MLP(256+64, 256)
-        self.pn11 = MLP(256+64, 256)
-        self.pn12 = MLP(256+64, 128)
+        self.pn9 = MLP([64, 256])
+        self.pn10 = MLP([256+64, 256])
+        self.pn11 = MLP([256+64, 256])
+        self.pn12 = MLP([256+64, 256])
+        self.pn13 = MLP([256+64, 128])
         self.dp = nn.Dropout(p=args.dropout)
-        self.conv13 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
+        self.conv14 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
 
     def forward(self, x, l):
@@ -589,23 +590,24 @@ class DGCNN_partseg(nn.Module):
         l = self.label_conv(l)             # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
         l = l.repeat(1, 1, x3.shape[-1])   # (batch_size, 64, num_points//64)
 
-        x = torch.cat((x3, l), dim=1)      # (batch_size, 256+64, num_points//64)
-        x = self.pn9(x)                    # (batch_size, 256+64, num_points//64) -> (batch_size, 256, num_points//64)
+        x = self.pn9(x3)                   # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
+        x = torch.cat((x, l), dim=1)       # (batch_size, 256+64, num_points//64)
+        x = self.pn10(x)                   # (batch_size, 256+64, num_points//64) -> (batch_size, 256, num_points//64)
 
         x = unpool(node3, node2, x)        # (batch_size, 64, num_points//16)
         x = torch.cat((x, x2), dim=1)      # (batch_size, 256+64, num_points//16)
-        x = self.pn10(x)                   # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
+        x = self.pn11(x)                   # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
 
         x = unpool(node2, node1, x)        # (batch_size, 64, num_points//4)
         x = torch.cat((x, x1), dim=1)      # (batch_size, 256+64, num_points//4)
-        x = self.pn11(x)                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.pn12(x)                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
         x = unpool(node1, node0, x)          # (batch_size, 64, num_points)
         x = torch.cat((x, x0), dim=1)      # (batch_size, 256+64, num_points)
-        x = self.pn12(x)                   # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
+        x = self.pn13(x)                   # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
 
         x = self.dp(x)
-        x = self.conv13(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
+        x = self.conv14(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
         return x
 
@@ -616,143 +618,76 @@ class DGCNN_semseg(nn.Module):
         self.args = args
         self.k = args.k
 
-        self.bn1 = nn.BatchNorm2d(64)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.bn3 = nn.BatchNorm2d(64)
-        self.bn4 = nn.BatchNorm2d(64)
-        self.bn5 = nn.BatchNorm2d(64)
-        self.bn6 = nn.BatchNorm2d(64)
-        self.bn7 = nn.BatchNorm2d(64)
-        self.bn8 = nn.BatchNorm2d(64)
-        self.bn9 = nn.BatchNorm2d(64)
-        self.bn10 = nn.BatchNorm2d(64)
-        self.bn11 = nn.BatchNorm2d(64)
-        self.bn12 = nn.BatchNorm2d(64)
-        self.bn13 = nn.BatchNorm1d(256)
-        self.bn14 = nn.BatchNorm1d(256)
-        self.bn15 = nn.BatchNorm1d(256)
-        self.bn16 = nn.BatchNorm1d(128)
+        self.pool1 = RandPool(self.args.num_points // 4, self.k // 2, 64)
+        self.pool2 = RandPool(self.args.num_points // 16, self.k // 4, 64)
+        self.pool3 = RandPool(self.args.num_points // 64, self.k // 8, 64)
 
-        self.conv1 = nn.Sequential(nn.Conv2d(18, 64, kernel_size=1, bias=False),
-                                   self.bn1,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
-                                   self.bn2,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv2d(64 * 2, 64, kernel_size=1, bias=False),
-                                   self.bn3,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv4 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
-                                   self.bn4,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv5 = nn.Sequential(nn.Conv2d(64 * 2 * 2, 64, kernel_size=1, bias=False),
-                                   self.bn5,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv6 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
-                                     self.bn6,
-                                     nn.LeakyReLU(negative_slope=0.2))
-        self.conv7 = nn.Sequential(nn.Conv2d(64 * 2, 64, kernel_size=1, bias=False),
-                                   self.bn7,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv8 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, bias=False),
-                                   self.bn8,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv9 = nn.Sequential(nn.Conv2d(64 * 2 * 2, 64, kernel_size=1, bias=False),
-                                   self.bn9,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv10 = nn.Sequential(nn.Conv2d(64 * 2, 64, kernel_size=1, bias=False),
-                                   self.bn10,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv11 = nn.Sequential(nn.Conv2d(64 * 2 * 2, 64, kernel_size=1, bias=False),
-                                   self.bn11,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv12 = nn.Sequential(nn.Conv2d(64 * 2, 64, kernel_size=1, bias=False),
-                                     self.bn12,
-                                     nn.LeakyReLU(negative_slope=0.2))
+        self.ec1 = EdgeConv(num_neighs=self.k, dims=[9, 64, 64])
+        self.ec2 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
+        self.ec3 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
+        self.ec4 = EdgeConv(num_neighs=self.k // 2, dims=[64, 64, 64])
+        self.ec5 = EdgeConv(num_neighs=self.k // 2, dims=[64, 64, 64])
+        self.ec6 = EdgeConv(num_neighs=self.k // 2, dims=[64, 64, 64])
+        self.ec7 = EdgeConv(num_neighs=self.k // 4, dims=[64, 64])
+        self.ec8 = EdgeConv(num_neighs=self.k // 4, dims=[64, 64])
+        self.ec9 = EdgeConv(num_neighs=self.k // 4, dims=[64, 64])
+        self.ec10 = EdgeConv(num_neighs=self.k // 8, dims=[64, 64])
+        self.ec11 = EdgeConv(num_neighs=self.k // 8, dims=[64, 64])
+        self.ec12 = EdgeConv(num_neighs=self.k // 8, dims=[64, 64])
 
-        self.conv13 = nn.Sequential(nn.Conv1d(64, 256, kernel_size=1, bias=False),
-                                     self.bn13,
-                                     nn.ReLU())
-        self.conv14 = nn.Sequential(nn.Conv1d(256 + 64, 256, kernel_size=1, bias=False),
-                                      self.bn14,
-                                      nn.ReLU())
-        self.conv15 = nn.Sequential(nn.Conv1d(256 + 64, 256, kernel_size=1, bias=False),
-                                    self.bn15,
-                                    nn.ReLU())
-        self.conv16 = nn.Sequential(nn.Conv1d(256 + 64, 128, kernel_size=1, bias=False),
-                                    self.bn16,
-                                    nn.ReLU())
-        self.conv17 = nn.Conv1d(128, 13, kernel_size=1, bias=False)
+        self.pn13 = MLP([64, 128, 256])
+        self.pn14 = MLP([256 + 64, 256, 256])
+        self.pn15 = MLP([256 + 64, 256, 256])
+        self.pn16 = MLP([256 + 64, 256, 128])
         self.dp = nn.Dropout(p=args.dropout)
+        self.conv17 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
     def forward(self, x):
-        xyz = x[:, :3, :]                       # use normalized xyz
+        node0 = x[:, :3, :]                       # use normalized xyz
 
-        x = get_graph_feature(x, k=self.k)      # (batch_size, 9, num_points) -> (batch_size, 9*2, num_points, k)
-        x = self.conv1(x)                       # (batch_size, 9*2, num_points, k) -> (batch_size, 64, num_points, k)
-        x = self.conv2(x)                       # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
-        x = x.max(dim=-1, keepdim=False)[0]     # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        x  = self.ec1(x)
+        x  = self.ec2(x)
+        x0 = self.ec3(x)
 
-        x = get_graph_feature(x, k=self.k)      # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
-        x = self.conv3(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 64, num_points, k)
-        x = self.conv4(x)                       # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
-        x1 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        node1, node1_feats = self.pool1(node0, x0)
 
-        node_features = x1[:, :, :self.args.num_points // 4]
-        node1 = xyz[:, :, :self.args.num_points // 4]
-        node_features_agg = aggregate(xyz, node1, x1, self.k // 2)
-        node_feature_1 = torch.cat((node_features, node_features_agg), dim=1)  # (batch_size, 64, num_points//4)
+        x  = self.ec4(node1_feats)
+        x  = self.ec5(x)
+        x1 = self.ec6(x)
+        if self.args.res:
+            x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
-        x = get_graph_feature(node_feature_1, k=self.k // 2)  # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
-        x = self.conv5(x)                                     # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x = self.conv6(x)                                     # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x = x.max(dim=-1, keepdim=False)[0]                   # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        node2, node2_feats = self.pool2(node1, x1)
 
-        x = get_graph_feature(x, k=self.k//2)                 # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
-        x = self.conv7(x)                                     # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x = self.conv8(x)                                     # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x2 = x.max(dim=-1, keepdim=False)[0]                  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
+        x  = self.ec7(node2_feats)
+        x  = self.ec8(x)
+        x2 = self.ec9(x)
+        if self.args.res:
+            x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
-        node_features = x2[:, :, :self.args.num_points // 16]
-        node2 = node1[:, :, :self.args.num_points // 16]
-        node_features_agg = aggregate(node1, node2, x2, self.k // 4)
-        node_feature_2 = torch.cat((node_features, node_features_agg), dim=1)  # (batch_size, 64, num_points//16)
+        node3, node3_feats = self.pool3(node2, x2)
 
-        x = get_graph_feature(node_feature_2, k=self.k // 4)  # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k//4)
-        x = self.conv9(x)                                     # (batch_size, 64*2, num_points//16, k//4) -> (batch_size, 64, num_points//16, k//4)
-        x = x.max(dim=-1, keepdim=False)[0]                   # (batch_size, 64, num_points//16, k//4) -> (batch_size, 64, num_points//16)
+        x  = self.ec10(node3_feats)
+        x  = self.ec11(x)
+        x3 = self.ec12(x)
+        if self.args.res:
+            x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
-        x = get_graph_feature(x, k=self.k // 4)               # (batch_size, 64, num_points//16) -> (batch_size, 64*2, num_points//16, k//4)
-        x = self.conv10(x)                                    # (batch_size, 64*2, num_points//16, k//4) -> (batch_size, 64, num_points//16, k//4)
-        x3 = x.max(dim=-1, keepdim=False)[0]                  # (batch_size, 64, num_points//16, k//4) -> (batch_size, 64, num_points//16)
+        x = self.pn13(x3)  # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
 
-        node_features = x3[:, :, :self.args.num_points // 64]
-        node3 = node2[:, :, :self.args.num_points // 64]
-        node_features_agg = aggregate(node2, node3, x3, self.k // 8)
-        node_feature_3 = torch.cat((node_features, node_features_agg), dim=1)  # (batch_size, 64, num_points//16)
+        x = unpool(node3, node2, x)  # (batch_size, 64, num_points//16)
+        x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points//16)
+        x = self.pn14(x)  # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
 
-        x = get_graph_feature(node_feature_3, k=self.k // 8)  # (batch_size, 64, num_points//64) -> (batch_size, 64*2, num_points//64, k//8)
-        x = self.conv11(x)                                    # (batch_size, 64*2, num_points//64, k//8) -> (batch_size, 64, num_points//64, k//8)
-        x = x.max(dim=-1, keepdim=False)[0]                   # (batch_size, 64, num_points//64, k//8) -> (batch_size, 64, num_points//64)
+        x = unpool(node2, node1, x)  # (batch_size, 64, num_points//4)
+        x = torch.cat((x, x1), dim=1)  # (batch_size, 256+64, num_points//4)
+        x = self.pn15(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        x = get_graph_feature(x, k=self.k // 8)               # (batch_size, 64, num_points//64) -> (batch_size, 64*2, num_points//64, k//8)
-        x = self.conv12(x)                                    # (batch_size, 64*2, num_points//64, k//8) -> (batch_size, 64, num_points//64, k//8)
-        x4 = x.max(dim=-1, keepdim=False)[0]                  # (batch_size, 64, num_points//64, k//8) -> (batch_size, 64, num_points//64)
-
-        x = self.conv13(x4)                                   # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//16)
-
-        x = unpool(node3, node2, x)
-        x = torch.cat((x, x3), dim=1)                         # (batch_size, 256+64, num_points//16)
-        x = self.conv14(x)                                    # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
-
-        x = unpool(node2, node1, x)
-        x = torch.cat((x, x2), dim=1)                         # (batch_size, 256+64, num_points//4)
-        x = self.conv15(x)                                    # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
-
-        x = unpool(node1, xyz, x)
-        x = torch.cat((x, x1), dim=1)                         # (batch_size, 256+64, num_points)
-        x = self.conv16(x)                                    # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
+        x = unpool(node1, node0, x)  # (batch_size, 64, num_points)
+        x = torch.cat((x, x0), dim=1)  # (batch_size, 256+64, num_points)
+        x = self.pn16(x)  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
 
         x = self.dp(x)
-        x = self.conv17(x)                                    # (batch_size, 128, num_points) -> (batch_size, 13, num_points)
-        return x, node1, node2
+        x = self.conv17(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
+        # (batch_size, 128, num_points) -> (batch_size, 13, num_points)
+        return x, node1, node2, node3
