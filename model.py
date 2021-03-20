@@ -535,21 +535,21 @@ class DGCNN_partseg(nn.Module):
         self.k = args.k
 
         self.pool1 = RandPool(self.args.num_points//4,  self.k, 64)
-        self.pool2 = RandPool(self.args.num_points//16, self.k, 64)
+        self.pool2 = RandPool(self.args.num_points//16, self.k, 128)
         self.pool3 = RandPool(self.args.num_points//64, self.k, 64)
 
         self.ec1 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
-        self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
-        self.ec3 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
-        self.ec4 = EdgeConv(num_neighs=self.k//2,    dims=[64, 64, 64])
+        self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 128, 128])
+        self.ec3 = EdgeConv(num_neighs=self.k,    dims=[128, 256, 256])
+        self.ec4 = EdgeConv(num_neighs=self.k//2,    dims=[256, 512, 512])
 
         self.label_conv = MLP([16, 64])
 
-        self.pn5 = MLP([64, 256])
-        self.pn6 = MLP([256+64, 256])
-        self.pn7 = MLP([256+64, 256])
-        self.pn8 = MLP([256+64, 256])
-        self.pn9 = MLP([256+64, 128])
+        self.pn5 = MLP([512, self.args.emb_dims])
+        self.pn6 = MLP([self.emb_dims+64, 512])
+        self.pn7 = MLP([512+256, 256])
+        self.pn8 = MLP([256+128, 128])
+        self.pn9 = MLP([128+64, 128])
         self.dp = nn.Dropout(p=args.dropout)
         self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
