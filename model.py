@@ -84,7 +84,7 @@ class PointNet(nn.Module):
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = Pool(256, 64, 0.2)
+        self.pool1 = Pool(self.args.num_sample, 64, 0.2)
         self.sigma = nn.Parameter(torch.zeros((2)), requires_grad=True)
 
     def forward(self, x):
