@@ -46,7 +46,7 @@ class CrossEntropyLossSeg(nn.Module):
 
 
 def _init_():
-    ckpt_dir = '/ceph/ckpt/scan'
+    ckpt_dir = BASE_DIR + '/ckpt/scan'
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir + '/' + args.exp_name):
@@ -61,10 +61,14 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
-                              batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
-                                        num_points=args.num_points), num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
+    train_loader = DataLoader(
+        ScanObject(h5_filename=BASE_DIR + '/data/scanobjectnn/{}'.format(args.file_name), num_points=args.num_points),
+        num_workers=8,
+        batch_size=args.batch_size, shuffle=True, drop_last=True)
+    test_loader = DataLoader(
+        ScanObject(h5_filename=BASE_DIR + '/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
+                   num_points=args.num_points), num_workers=8, batch_size=args.test_batch_size, shuffle=True,
+        drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -206,12 +210,13 @@ def train(args, io):
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), '/ceph/ckpt/scan/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), BASE_DIR + '/ckpt/scan/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
-                                        num_points=args.num_points), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+    test_loader = DataLoader(
+        ScanObject(h5_filename=BASE_DIR + '/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
+                   num_points=args.num_points), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -239,8 +244,12 @@ def test(args, io):
         test_pred.append(preds.detach().cpu().numpy())
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
-                np.save('/ceph/ckpt/scan/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
-                np.save('/ceph/ckpt/scan/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
+                np.save(
+                    BASE_DIR + '/ckpt/scan/%s/visu/node0_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                    data[i, :, :].detach().cpu().numpy())
+                np.save(
+                    BASE_DIR + '/ckpt/scan/%s/visu/node1_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                    node1[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
@@ -252,8 +261,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
-    parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
-                        help='Name of the experiment')
+    parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
+                        help='Path to data and ckpt')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
                         choices=['pointnet', 'dgcnn'],
                         help='Model to use, [pointnet, dgcnn]')
@@ -297,9 +306,11 @@ if __name__ == "__main__":
                         help='file name for scan object dataset')
     args = parser.parse_args()
 
+    BASE_DIR = args.base_dir
+
     _init_()
 
-    io = IOStream('/ceph/ckpt/scan/' + args.exp_name + '/run.log')
+    io = IOStream(BASE_DIR + '/ckpt/scan/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     name_lut = {'bg': 'training_objectdataset.h5', 't25': 'training_objectdataset_augmented25_norot.h5',
