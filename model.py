@@ -535,7 +535,7 @@ class DGCNN_partseg(nn.Module):
         self.k = args.k
 
         self.pool1 = RandPool(self.args.num_points//4,  self.k, 64)
-        self.pool2 = RandPool(self.args.num_points//16, self.k, 128)
+        self.pool2 = RandPool(self.args.num_points//16, self.k, 64)
         self.pool3 = RandPool(self.args.num_points//64, self.k, 64)
 
         self.ec0 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
