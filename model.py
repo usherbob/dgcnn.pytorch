@@ -565,7 +565,7 @@ class DGCNN_partseg(nn.Module):
         node0 = copy.deepcopy(x)
 
         x0  = self.ec0(x)
-        x_t0 = torch.max(self.pn0(x0), dim=1)[0]
+        x_t0 = torch.max(self.pn0(x0), dim=1, keepdim=True)[0]
 
         if self.args.pool:
             node1, node1_feats = self.pool1(node0, x0)
@@ -574,7 +574,7 @@ class DGCNN_partseg(nn.Module):
             node1_feats = x0
 
         x1  = self.ec1(node1_feats)
-        x_t1 = torch.max(self.pn1(x1), dim=1)[0]
+        x_t1 = torch.max(self.pn1(x1), dim=1, keepdim=True)[0]
         if self.args.res:
             x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
@@ -585,7 +585,7 @@ class DGCNN_partseg(nn.Module):
             node2_feats = x1
 
         x2  = self.ec2(node2_feats)
-        x_t2 = torch.max(self.pn2(x2), dim=1)[0]
+        x_t2 = torch.max(self.pn2(x2), dim=1, keepdim=True)[0]
         if self.args.res:
             x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
@@ -596,12 +596,12 @@ class DGCNN_partseg(nn.Module):
             node3_feats = x2
 
         x3  = self.ec3(node3_feats)
-        x_t3 = torch.max(self.pn3(x3), dim=1)[0]
+        x_t3 = torch.max(self.pn3(x3), dim=1, keepdim=True)[0]
         if self.args.res:
             x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
         x = torch.cat([x_t0, x_t1, x_t2, x_t3], dim=-1)
-        x = torch.max(x, dim=-1)[0]
+        x = torch.max(x, dim=-1, keepdim=True)[0]
         l = l.view(batch_size, -1, 1)      # (batch_size, num_categoties, 1)
         l = self.label_conv(l)             # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
         v = torch.cat([x, l], dim=1)       # (batch_size, 1088, 1)
