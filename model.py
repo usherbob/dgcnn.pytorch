@@ -538,68 +538,97 @@ class DGCNN_partseg(nn.Module):
         self.pool2 = RandPool(self.args.num_points//16, self.k, 128)
         self.pool3 = RandPool(self.args.num_points//64, self.k, 64)
 
-        self.ec1 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
-        self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 128, 128])
-        self.ec3 = EdgeConv(num_neighs=self.k,    dims=[128, 256, 256])
-        self.ec4 = EdgeConv(num_neighs=self.k//2,    dims=[256, 512, 512])
+        self.ec0 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
+        self.pn0 = MLP([64, 1024])
+        self.ec1 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
+        self.pn1 = MLP([64, 1024])
+        self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
+        self.pn2 = MLP([64, 1024])
+        self.ec3 = EdgeConv(num_neighs=self.k//2,    dims=[64, 64, 64])
+        self.pn3 = MLP([64, 1024])
 
+        # self.pn4 = MLP([256, 1024])
         self.label_conv = MLP([16, 64])
 
-        self.pn5 = MLP([512, self.args.emb_dims])
-        self.pn6 = MLP([self.emb_dims+64, 512])
-        self.pn7 = MLP([512+256, 256])
-        self.pn8 = MLP([256+128, 128])
-        self.pn9 = MLP([128+64, 128])
-        self.dp = nn.Dropout(p=args.dropout)
-        self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
+        self.pn4 = MLP([1152, 256])
+        self.dp1 = nn.Dropout(p=args.dropout)
+        self.pn5 = MLP([256+64, 256])
+        self.dp2 = nn.Dropout(p=args.dropout)
+        self.pn6 = MLP([256+64, 256])
+        self.dp3 = nn.Dropout(p=args.dropout)
+        self.pn7 = MLP([256+64, 128])
+        self.conv8 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
 
     def forward(self, x, l):
         batch_size = x.size(0)
         node0 = copy.deepcopy(x)
 
-        x0  = self.ec1(x)
+        x0  = self.ec0(x)
+        x_t0 = torch.max(self.pn0(x0), dim=1)[0]
 
-        node1, node1_feats = self.pool1(node0, x0)
+        if self.args.pool:
+            node1, node1_feats = self.pool1(node0, x0)
+        else:
+            node1 = node0
+            node1_feats = x0
 
-        x1  = self.ec2(node1_feats)
+        x1  = self.ec1(node1_feats)
+        x_t1 = torch.max(self.pn1(x1), dim=1)[0]
         if self.args.res:
             x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
-        node2, node2_feats = self.pool2(node1, x1)
+        if self.args.pool:
+            node2, node2_feats = self.pool2(node1, x1)
+        else:
+            node2 = node1
+            node2_feats = x1
 
-        x2  = self.ec3(node2_feats)
+        x2  = self.ec2(node2_feats)
+        x_t2 = torch.max(self.pn2(x2), dim=1)[0]
         if self.args.res:
             x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
-        node3, node3_feats = self.pool3(node2, x2)
+        if self.args.pool:
+            node3, node3_feats = self.pool3(node2, x2)
+        else:
+            node3 = node2
+            node3_feats = x2
 
-        x3  = self.ec4(node3_feats)
+        x3  = self.ec3(node3_feats)
+        x_t3 = torch.max(self.pn3(x3), dim=1)[0]
         if self.args.res:
             x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
+        x = torch.cat([x_t0, x_t1, x_t2, x_t3], dim=-1)
+        x = torch.max(x, dim=-1)[0]
         l = l.view(batch_size, -1, 1)      # (batch_size, num_categoties, 1)
         l = self.label_conv(l)             # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
-        l = l.repeat(1, 1, x3.shape[-1])   # (batch_size, 64, num_points//64)
+        v = torch.cat([x, l], dim=1)       # (batch_size, 1088, 1)
 
-        x = self.pn5(x3)                   # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
-        x = torch.cat((x, l), dim=1)       # (batch_size, 256+64, num_points//64)
-        x = self.pn6(x)                   # (batch_size, 256+64, num_points//64) -> (batch_size, 256, num_points//64)
+        v = v.repeat(1, 1, x3.shape[-1])   # (batch_size, 1088, num_points//64)
+        x = torch.cat([x, v], dim=1)       # (batch_size, 1088+64, num_points//64
+        x = self.pn4(x)                    # (batch_size, 1088, num_points//64) -> (batch_size, 256, num_points//64)
+        x = self.dp1(x)
 
-        x = unpool(node3, node2, x)        # (batch_size, 64, num_points//16)
+        if self.args.pool:
+            x = unpool(node3, node2, x)        # (batch_size, 256, num_points//16)
         x = torch.cat((x, x2), dim=1)      # (batch_size, 256+64, num_points//16)
-        x = self.pn7(x)                   # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
+        x = self.pn5(x)                    # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
+        x = self.dp2(x)
 
-        x = unpool(node2, node1, x)        # (batch_size, 64, num_points//4)
+        if self.args.pool:
+            x = unpool(node2, node1, x)        # (batch_size, 256, num_points//4)
         x = torch.cat((x, x1), dim=1)      # (batch_size, 256+64, num_points//4)
-        x = self.pn8(x)                   # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.pn6(x)                    # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.dp3(x)
 
-        x = unpool(node1, node0, x)          # (batch_size, 64, num_points)
+        if self.args.pool:
+            x = unpool(node1, node0, x)        # (batch_size, 64, num_points)
         x = torch.cat((x, x0), dim=1)      # (batch_size, 256+64, num_points)
-        x = self.pn9(x)                   # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
+        x = self.pn7(x)                    # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
 
-        x = self.dp(x)
-        x = self.conv10(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
+        x = self.conv8(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
         return x
 
