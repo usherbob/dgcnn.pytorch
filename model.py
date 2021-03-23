@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from util import knn, get_graph_feature, unpool, aggregate, MLP, EdgeConv, RandPool
+from util import knn, get_graph_feature, unpool, aggregate, MLP, EdgeConv, RandPool, Transform_Net
 
 
 class PointNet(nn.Module):
@@ -533,6 +533,7 @@ class DGCNN_partseg(nn.Module):
         self.args = args
         self.seg_num_all = seg_num_all
         self.k = args.k
+        self.transform_net = Transform_Net(args)
 
         self.pool1 = RandPool(self.args.num_points//4,  self.k, 64)
         self.pool2 = RandPool(self.args.num_points//16, self.k, 64)
@@ -562,10 +563,17 @@ class DGCNN_partseg(nn.Module):
 
     def forward(self, x, l):
         batch_size = x.size(0)
+
+        x_ = get_graph_feature(x, k=self.k)  # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
+        t = self.transform_net(x_)           # (batch_size, 3, 3)
+        x = x.transpose(2, 1)                # (batch_size, 3, num_points) -> (batch_size, num_points, 3)
+        x = torch.bmm(x, t)                  # (batch_size, num_points, 3) * (batch_size, 3, 3) -> (batch_size, num_points, 3)
+        x = x.transpose(2, 1)                # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
+
         node0 = copy.deepcopy(x)
 
         x0  = self.ec0(x)
-        x_t0 = torch.max(self.pn0(x0), dim=1, keepdim=True)[0]
+        x_t0 = torch.max(self.pn0(x0), dim=-1, keepdim=True)[0]
 
         if self.args.pool:
             node1, node1_feats = self.pool1(node0, x0)
@@ -574,7 +582,7 @@ class DGCNN_partseg(nn.Module):
             node1_feats = x0
 
         x1  = self.ec1(node1_feats)
-        x_t1 = torch.max(self.pn1(x1), dim=1, keepdim=True)[0]
+        x_t1 = torch.max(self.pn1(x1), dim=-1, keepdim=True)[0]
         if self.args.res:
             x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
@@ -585,7 +593,7 @@ class DGCNN_partseg(nn.Module):
             node2_feats = x1
 
         x2  = self.ec2(node2_feats)
-        x_t2 = torch.max(self.pn2(x2), dim=1, keepdim=True)[0]
+        x_t2 = torch.max(self.pn2(x2), dim=-1, keepdim=True)[0]
         if self.args.res:
             x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
@@ -596,7 +604,7 @@ class DGCNN_partseg(nn.Module):
             node3_feats = x2
 
         x3  = self.ec3(node3_feats)
-        x_t3 = torch.max(self.pn3(x3), dim=1, keepdim=True)[0]
+        x_t3 = torch.max(self.pn3(x3), dim=-1, keepdim=True)[0]
         if self.args.res:
             x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
@@ -604,10 +612,10 @@ class DGCNN_partseg(nn.Module):
         x = torch.max(x, dim=-1, keepdim=True)[0]
         l = l.view(batch_size, -1, 1)      # (batch_size, num_categoties, 1)
         l = self.label_conv(l)             # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
-        v = torch.cat([x, l], dim=1)       # (batch_size, 1088, 1)
+        x = torch.cat([x, l], dim=1)       # (batch_size, 1088, 1)
 
-        v = v.repeat(1, 1, x3.shape[-1])   # (batch_size, 1088, num_points//64)
-        x = torch.cat([x, v], dim=1)       # (batch_size, 1088+64, num_points//64
+        x = x.repeat(1, 1, x3.shape[-1])   # (batch_size, 1088, num_points//64)
+        x = torch.cat([x, x3], dim=1)      # (batch_size, 1088+64, num_points//64)
         x = self.pn4(x)                    # (batch_size, 1088, num_points//64) -> (batch_size, 256, num_points//64)
         x = self.dp1(x)
 
