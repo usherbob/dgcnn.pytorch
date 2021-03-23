@@ -570,7 +570,7 @@ class DGCNN_partseg(nn.Module):
         x = torch.bmm(x, t)                  # (batch_size, num_points, 3) * (batch_size, 3, 3) -> (batch_size, num_points, 3)
         x = x.transpose(2, 1)                # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
 
-        node0 = copy.deepcopy(x)
+        node0 = x
 
         x0  = self.ec0(x)
         x_t0 = torch.max(self.pn0(x0), dim=-1, keepdim=True)[0]
@@ -647,24 +647,28 @@ class DGCNN_semseg(nn.Module):
         self.args = args
         self.k = args.k
 
-        self.pool1 = RandPool(self.args.num_points // 4, self.k // 2, 64)
-        self.pool2 = RandPool(self.args.num_points // 16, self.k // 4, 64)
-        self.pool3 = RandPool(self.args.num_points // 64, self.k // 8, 64)
+        self.pool0 = RandPool(self.args.num_points // 4, self.k, 64)
+        self.pool1 = RandPool(self.args.num_points // 16, self.k, 64)
+        self.pool2 = RandPool(self.args.num_points // 64, self.k, 64)
 
         self.ec1 = EdgeConv(num_neighs=self.k, dims=[9, 64, 64])
         self.ec2 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
         self.ec3 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
-        self.ec4 = EdgeConv(num_neighs=self.k // 2, dims=[64, 64, 64])
-        self.ec5 = EdgeConv(num_neighs=self.k // 2, dims=[64, 64, 64])
-        self.ec6 = EdgeConv(num_neighs=self.k // 2, dims=[64, 64, 64])
-        self.ec7 = EdgeConv(num_neighs=self.k // 4, dims=[64, 64])
-        self.ec8 = EdgeConv(num_neighs=self.k // 4, dims=[64, 64])
-        self.ec9 = EdgeConv(num_neighs=self.k // 4, dims=[64, 64])
-        self.ec10 = EdgeConv(num_neighs=self.k // 8, dims=[64, 64])
-        self.ec11 = EdgeConv(num_neighs=self.k // 8, dims=[64, 64])
-        self.ec12 = EdgeConv(num_neighs=self.k // 8, dims=[64, 64])
+        self.pn0 = MLP([64*3, 1024])
+        self.ec4 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
+        self.ec5 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
+        self.ec6 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
+        self.pn1 = MLP([64*3, 1024])
+        self.ec7 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.ec8 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.ec9 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.pn2 = MLP([64*3, 1024])
+        self.ec10 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.ec11 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.ec12 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.pn3 = MLP([64*3, 1024])
 
-        self.pn13 = MLP([64, 128, 256])
+        self.pn13 = MLP([1088, 512, 256])
         self.pn14 = MLP([256 + 64, 256, 256])
         self.pn15 = MLP([256 + 64, 256, 256])
         self.pn16 = MLP([256 + 64, 256, 128])
@@ -675,34 +679,46 @@ class DGCNN_semseg(nn.Module):
         node0 = x[:, :3, :]                       # use normalized xyz
 
         x  = self.ec1(x)
-        x  = self.ec2(x)
-        x0 = self.ec3(x)
-
-        node1, node1_feats = self.pool1(node0, x0)
+        x_  = self.ec2(x)
+        x0 = self.ec3(x_)
+        x_t0 = torch.cat([x, x_, x0], dim=1)
+        x_t0 = torch.max(self.pn0(x_t0), dim=-1, keepdim=True)[0]
+        node1, node1_feats = self.pool0(node0, x0)
 
         x  = self.ec4(node1_feats)
-        x  = self.ec5(x)
-        x1 = self.ec6(x)
+        x_  = self.ec5(x)
+        x1 = self.ec6(x_)
+        x_t1 = torch.cat([x, x_, x1], dim=1)
+        x_t1 = torch.max(self.pn1(x_t1), dim=-1, keepdim=True)[0]
         if self.args.res:
             x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
-        node2, node2_feats = self.pool2(node1, x1)
+        node2, node2_feats = self.pool1(node1, x1)
 
         x  = self.ec7(node2_feats)
-        x  = self.ec8(x)
-        x2 = self.ec9(x)
+        x_  = self.ec8(x)
+        x2 = self.ec9(x_)
+        x_t2 = torch.cat([x, x_, x2], dim=1)
+        x_t2 = torch.max(self.pn2(x_t2), dim=-1, keepdim=True)[0]
         if self.args.res:
             x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
-        node3, node3_feats = self.pool3(node2, x2)
+        node3, node3_feats = self.pool2(node2, x2)
 
         x  = self.ec10(node3_feats)
-        x  = self.ec11(x)
-        x3 = self.ec12(x)
+        x_  = self.ec11(x)
+        x3 = self.ec12(x_)
+        x_t3 = torch.cat([x, x_, x3], dim=1)
+        x_t3 = torch.max(self.pn3(x_t3), dim=-1, keepdim=True)[0]
         if self.args.res:
             x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
-        x = self.pn13(x3)  # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
+        x = torch.cat([x_t0, x_t1, x_t2, x_t3], dim=-1)
+        x = torch.max(x, dim=-1, keepdim=True)[0]
+
+        x = x.repeat(1, 1, x3.shape[-1])
+        x = torch.cat([x, x3], dim=1)
+        x = self.pn13(x)  # (batch_size, 64, num_points//64) -> (batch_size, 256, num_points//64)
 
         x = unpool(node3, node2, x)  # (batch_size, 64, num_points//16)
         x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points//16)
