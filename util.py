@@ -141,17 +141,42 @@ class Discriminator(nn.Module):
         return logits, logits[:, :v // 2]
 
 
-class EdgeConv(nn.Module):
-    def __init__(self, k, in_dim, out_dim):
+class MLP(nn.Module):
+    def __init__(self, dims):
         super().__init__()
-        self.k = k
-        self.conv = nn.Sequential(nn.Conv2d(in_dim * 2, out_dim, kernel_size=1, bias=False),
-                                  nn.BatchNorm2d(out_dim),
-                                  nn.LeakyReLU(negative_slope=0.2))
+        last_dim = dims[0]
+        self.dims = dims
+        for i in range(1, len(dims)):
+            setattr(self, "conv_{:d}".format(i),
+                    nn.Sequential(nn.Conv1d(last_dim, dims[i], kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(dims[i]),
+                                  nn.ReLU()))
+            last_dim = dims[i]
+
 
     def forward(self, x):
-        x = get_graph_feature(x, k=self.k)
-        x = self.conv(x)
+        for i in range(1, len(self.dims)):
+            x = getattr(self, 'conv_{:d}'.format(i))(x)
+        return x
+
+
+class EdgeConv(nn.Module):
+    def __init__(self, num_neighs, dims):
+        super().__init__()
+        self.num_neighs = num_neighs
+        last_dim = dims[0] * 2
+        self.dims = dims
+        for i in range(1, len(dims)):
+            setattr(self, "conv_{:d}".format(i),
+                    nn.Sequential(nn.Conv2d(last_dim, dims[i], kernel_size=1, bias=False),
+                                      nn.BatchNorm2d(dims[i]),
+                                      nn.LeakyReLU(negative_slope=0.2)))
+            last_dim = dims[i]
+
+    def forward(self, x):
+        x = get_graph_feature(x, k=self.num_neighs)
+        for i in range(1, len(self.dims)):
+            x = getattr(self, 'conv_{:d}'.format(i))(x)
         x = x.max(dim=-1, keepdim=False)[0]
         return x
 
@@ -169,7 +194,7 @@ class IndexSelect(nn.Module):
                                 nn.BatchNorm1d(n_h),
                                 nn.ReLU())
         self.disc = Discriminator(n_h)
-        self.center = EdgeConv(neighs, n_h, n_h)
+        self.center = EdgeConv(neighs, [n_h, n_h])
 
     def forward(self, xyz, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)
@@ -204,7 +229,7 @@ class MIPool(nn.Module):
         '''
         self.num_sample = num_sample
         self.num_agg = num_agg
-        self.sampler = IndexSelect(num_sample, num_channels, neighs=self.k // 2)
+        self.sampler = IndexSelect(num_sample, num_channels, neighs=self.num_agg)
         self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
                                   nn.BatchNorm1d(num_channels),
                                   nn.ReLU())

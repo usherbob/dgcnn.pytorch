@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from util import knn, get_graph_feature, unpool, aggregate, Discriminator, EdgeConv, IndexSelect, MIPool
+from util import knn, get_graph_feature, unpool, aggregate, Discriminator, MLP, EdgeConv, IndexSelect, MIPool
 
 
 class PointNet(nn.Module):
@@ -545,7 +545,6 @@ class DGCNN_partseg(nn.Module):
         self.args = args
         self.seg_num_all = seg_num_all
         self.k = args.k
-        self.transform_net = Transform_Net(args)
 
         self.pool1 = MIPool(self.args.num_points//4,  self.k, 64)
         self.pool2 = MIPool(self.args.num_points//16, self.k, 64)
