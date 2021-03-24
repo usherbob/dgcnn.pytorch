@@ -660,8 +660,8 @@ class DGCNN_semseg(nn.Module):
         self.ec7 = EdgeConv(num_neighs=self.k, dims=[64, 64])
         self.ec8 = EdgeConv(num_neighs=self.k, dims=[64, 64])
         self.pn9 = MLP([64, 1024])
-        self.ec10 = EdgeConv(num_neighs=self.k, dims=[64, 64])
-        self.ec11 = EdgeConv(num_neighs=self.k, dims=[64, 64])
+        self.ec10 = EdgeConv(num_neighs=self.k//2, dims=[64, 64])
+        self.ec11 = EdgeConv(num_neighs=self.k//2, dims=[64, 64])
         self.pn12 = MLP([64, 1024])
 
         self.pn13 = MLP([1088, 256])
