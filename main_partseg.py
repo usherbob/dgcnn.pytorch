@@ -353,7 +353,7 @@ if __name__ == "__main__":
                         help='Turn on residual connection')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
-    parser.add_argument('--pool', action='store_true',
+    parser.add_argument('--pool', action='store_false',
                         help='whether use pooling module')
     args = parser.parse_args()
 
