@@ -545,151 +545,103 @@ class DGCNN_partseg(nn.Module):
         self.args = args
         self.seg_num_all = seg_num_all
         self.k = args.k
+        self.transform_net = Transform_Net(args)
 
-        self.bn1 = nn.BatchNorm2d(64)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.bn4 = nn.BatchNorm2d(128)
-        self.bn5 = nn.BatchNorm2d(128)
-        self.bn6 = nn.BatchNorm2d(128)
-        self.bn6_m = nn.BatchNorm1d(args.emb_dims)
-        self.bn7 = nn.BatchNorm1d(64)
-        self.bn8 = nn.BatchNorm1d(256)
-        self.bn9 = nn.BatchNorm1d(256)
-        self.bn10 = nn.BatchNorm1d(256)
-        self.bn11 = nn.BatchNorm1d(256)
-        self.bn12 = nn.BatchNorm1d(128)
-        self.bn1_p = nn.BatchNorm1d(128)
-        self.bn2_p = nn.BatchNorm1d(128)
-        self.bn3_p = nn.BatchNorm1d(128)
+        self.pool1 = RandPool(self.args.num_points//4,  self.k, 64)
+        self.pool2 = RandPool(self.args.num_points//16, self.k, 64)
+        self.pool3 = RandPool(self.args.num_points//64, self.k, 64)
 
-        self.pool1 = IndexSelect(self.args.num_points // 4, 128, neighs=self.k // 2)
-        self.pool2 = IndexSelect(self.args.num_points // 16, 128, neighs=self.k // 4)
-        self.pool3 = IndexSelect(self.args.num_points // 64, 128, neighs=self.k // 8)
-        # self.pool1 = IndexSelect(256, 64, neighs=self.k//2)
+        self.ec0 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
+        self.pn0 = MLP([64, 1024])
+        self.ec1 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
+        self.pn1 = MLP([64, 1024])
+        self.ec2 = EdgeConv(num_neighs=self.k,    dims=[64, 64, 64])
+        self.pn2 = MLP([64, 1024])
+        self.ec3 = EdgeConv(num_neighs=self.k//2,    dims=[64, 64, 64])
+        self.pn3 = MLP([64, 1024])
 
-        self.conv1 = nn.Sequential(nn.Conv2d(6, 64, kernel_size=1, bias=False),
-                                   self.bn1,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv2 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=1, bias=False),
-                                   self.bn2,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv1_p = nn.Sequential(nn.Conv1d(128 * 2, 128, kernel_size=1, bias=False),
-                                     self.bn1_p,
-                                     nn.LeakyReLU(negative_slope=0.2))
-        self.conv3 = nn.Sequential(nn.Conv2d(128 * 2, 128, kernel_size=1, bias=False),
-                                   self.bn3,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv4 = nn.Sequential(nn.Conv2d(128, 128, kernel_size=1, bias=False),
-                                   self.bn4,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv2_p = nn.Sequential(nn.Conv1d(128 * 2, 128, kernel_size=1, bias=False),
-                                     self.bn2_p,
-                                     nn.LeakyReLU(negative_slope=0.2))
-        self.conv5 = nn.Sequential(nn.Conv2d(128 * 2, 128, kernel_size=1, bias=False),
-                                   self.bn5,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv3_p = nn.Sequential(nn.Conv1d(128 * 2, 128, kernel_size=1, bias=False),
-                                     self.bn3_p,
-                                     nn.LeakyReLU(negative_slope=0.2))
-        self.conv6 = nn.Sequential(nn.Conv2d(128 * 2, 128, kernel_size=1, bias=False),
-                                   self.bn6,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv6_m = nn.Sequential(nn.Conv1d(128 * 32, args.emb_dims, kernel_size=1, bias=False),
-                                     self.bn6_m,
-                                     nn.LeakyReLU(negative_slope=0.2))
-        self.conv7 = nn.Sequential(nn.Conv1d(16, 64, kernel_size=1, bias=False),
-                                   self.bn7,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv8 = nn.Sequential(nn.Conv1d(args.emb_dims + 64, 256, kernel_size=1, bias=False),
-                                   self.bn8,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv9 = nn.Sequential(nn.Conv1d(256 + 128, 256, kernel_size=1, bias=False),
-                                   self.bn9,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv10 = nn.Sequential(nn.Conv1d(256 + 128, 256, kernel_size=1, bias=False),
-                                    self.bn10,
-                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv11 = nn.Sequential(nn.Conv1d(256 + 128, 256, kernel_size=1, bias=False),
-                                    self.bn11,
-                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv12 = nn.Sequential(nn.Conv1d(256 + 128, 128, kernel_size=1, bias=False),
-                                    self.bn12,
-                                    nn.LeakyReLU(negative_slope=0.2))
-        self.dp = nn.Dropout(p=args.dropout)
-        self.conv13 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
+        # self.pn4 = MLP([256, 1024])
+        self.label_conv = MLP([16, 64])
+
+        self.pn4 = MLP([1152, 256])
+        self.dp1 = nn.Dropout(p=args.dropout)
+        self.pn5 = MLP([256+64, 256])
+        self.dp2 = nn.Dropout(p=args.dropout)
+        self.pn6 = MLP([256+64, 256])
+        self.dp3 = nn.Dropout(p=args.dropout)
+        self.pn7 = MLP([256+64, 128])
+        self.conv8 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
+
 
     def forward(self, x, l):
         batch_size = x.size(0)
-        xyz = copy.deepcopy(x)
+        node0 = copy.deepcopy(x)
 
-        x = get_graph_feature(x, k=self.k)  # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
-        x = self.conv1(x)  # (batch_size, 3*2, num_points, k) -> (batch_size, 64, num_points, k)
-        x = self.conv2(x)  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points, k)
-        x1 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
+        x0  = self.ec0(x)
+        x_t0 = torch.max(self.pn0(x0), dim=-1, keepdim=True)[0]
 
-        node_feature_1, values, idx, ret1, node1_static, node1 = self.pool1(xyz, x1)
-        node_features_agg = aggregate(xyz, node1_static, x1, self.k // 2)
-        x = torch.cat((node_feature_1, node_features_agg), dim=1)  # (batch_size, 64*2, num_points//4)
-        x_p1 = self.conv1_p(x)  # (batch_size, 64, num_points//4)
+        if self.args.pool:
+            node1_static, node1, node1_feats, ret1 = self.pool1(node0, x0)
+        else:
+            node1 = node0
+            node1_feats = x0
 
-        x = get_graph_feature(x_p1,
-                              k=self.k // 2)  # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
-        x = self.conv3(x)  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x = self.conv4(x)  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x2 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x2 = F.leaky_relu(x2 + x_p1, negative_slope=0.2)  # (batch_size, 64, num_points//4)
+        x1 = self.ec1(node1_feats)
+        x_t1 = torch.max(self.pn1(x1), dim=-1, keepdim=True)[0]
+        if self.args.res:
+            x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
-        # node1, node_feature_1, node1_static = self.pool1(xyz, x2)      # (batch_size, 64, num_points) -> (batch_size, 64, num_points//4) 512
-        node_feature_2, values, idx, ret2, node2_static, node2 = self.pool2(node1_static, x2)
-        node_features_agg = aggregate(node1_static, node2_static, x2, self.k // 4)
-        x = torch.cat((node_feature_2, node_features_agg), dim=1)  # (batch_size, 64*2, num_points//16)
-        x_p2 = self.conv2_p(x)  # (batch_size, 64, num_points//16)
+        if self.args.pool:
+            node2_static, node2, node2_feats, ret2 = self.pool2(node1, x1)
+        else:
+            node2 = node1
+            node2_feats = x1
 
-        x = get_graph_feature(x_p2,
-                              k=self.k // 4)  # (batch_size, 128, num_points//4) -> (batch_size, 128*2, num_points//4, k//2)
-        x = self.conv5(x)  # (batch_size, 128*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x3 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x3 = F.leaky_relu(x3 + x_p2, negative_slope=0.2)
+        x2  = self.ec2(node2_feats)
+        x_t2 = torch.max(self.pn2(x2), dim=-1, keepdim=True)[0]
+        if self.args.res:
+            x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
-        node_feature_3, values, idx, ret3, node3_static, node3 = self.pool3(node2_static, x3)
-        node_features_agg = aggregate(node2_static, node3_static, x3, self.k // 8)
-        x = torch.cat((node_feature_3, node_features_agg), dim=1)  # (batch_size, 64*2, num_points//64)
-        x_p3 = self.conv3_p(x)  # (batch_size, 64, num_points//64)
+        if self.args.pool:
+            node3_static, node3, node3_feats, ret3 = self.pool3(node2, x2)
+        else:
+            node3 = node2
+            node3_feats = x2
 
-        x = get_graph_feature(x_p3,
-                              k=self.k // 8)  # (batch_size, 64, num_points//4) -> (batch_size, 64*2, num_points//4, k//2)
-        x = self.conv6(x)  # (batch_size, 64*2, num_points//4, k//2) -> (batch_size, 64, num_points//4, k//2)
-        x4 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points//4, k//2) -> (batch_size, 64, num_points//4)
-        x4 = F.leaky_relu(x4 + x_p3, negative_slope=0.2)
+        x3  = self.ec3(node3_feats)
+        x_t3 = torch.max(self.pn3(x3), dim=-1, keepdim=True)[0]
+        if self.args.res:
+            x3 = F.relu(x3 + node3_feats)  # (batch_size, 64, num_points//64)
 
-        x = torch.reshape(x4, (x.shape[0], -1, 1))
-        x = self.conv6_m(x)  # (batch_size, 64*4, 1) -> (batch_size, 1024, 1)
+        x = torch.cat([x_t0, x_t1, x_t2, x_t3], dim=-1)
+        x = torch.max(x, dim=-1, keepdim=True)[0]
+        l = l.view(batch_size, -1, 1)      # (batch_size, num_categoties, 1)
+        l = self.label_conv(l)             # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
+        x = torch.cat([x, l], dim=1)       # (batch_size, 1088, 1)
 
-        l = l.view(batch_size, -1, 1)  # (batch_size, num_categoties, 1)
-        l = self.conv7(l)  # (batch_size, num_categoties, 1) -> (batch_size, 64, 1)
+        x = x.repeat(1, 1, x3.shape[-1])   # (batch_size, 1088, num_points//64)
+        x = torch.cat([x, x3], dim=1)      # (batch_size, 1088+64, num_points//64)
+        x = self.pn4(x)                    # (batch_size, 1088, num_points//64) -> (batch_size, 256, num_points//64)
+        x = self.dp1(x)
 
-        x = torch.cat((x, l), dim=1)  # (batch_size, 1088, 1)
-        x = self.conv8(x)  # (batch_size, 1088, 1) -> (batch_size, 256, 1)
+        if self.args.pool:
+            x = unpool(node3, node2, x)        # (batch_size, 256, num_points//16)
+        x = torch.cat((x, x2), dim=1)      # (batch_size, 256+64, num_points//16)
+        x = self.pn5(x)                    # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
+        x = self.dp2(x)
 
-        x = x.repeat(1, 1, x4.shape[-1])  # (batch_size, 64, num_points//64)
-        x = torch.cat((x, x4), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv9(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        if self.args.pool:
+            x = unpool(node2, node1, x)        # (batch_size, 256, num_points//4)
+        x = torch.cat((x, x1), dim=1)      # (batch_size, 256+64, num_points//4)
+        x = self.pn6(x)                    # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        x = self.dp3(x)
 
-        x = unpool(node3_static, node2_static, x)  # (batch_size, 64, num_points//16)
-        x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv10(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
+        if self.args.pool:
+            x = unpool(node1, node0, x)        # (batch_size, 64, num_points)
+        x = torch.cat((x, x0), dim=1)      # (batch_size, 256+64, num_points)
+        x = self.pn7(x)                    # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
 
-        x = unpool(node2_static, node1_static, x)  # (batch_size, 64, num_points//4)
-        x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points)
-        x = self.conv11(x)  # (batch_size, 256+64, num_points) -> (batch_size, 256, num_points)
-
-        x = unpool(node1_static, xyz, x)  # (batch_size, 64, num_points)
-        x = torch.cat((x, x1), dim=1)  # (batch_size, 256+64, num_points)
-        x = self.conv12(x)  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
-        x = self.dp(x)
-
-        x = self.conv13(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
+        x = self.conv8(x)                 # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
 
         return x, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static
         # return x, node1, node1_static

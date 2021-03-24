@@ -193,7 +193,28 @@ class IndexSelect(nn.Module):
         xyz_idx = xyz_idx.permute(0, 2, 1)
         xyz_static = xyz.gather(2, xyz_idx)  # Bx3xnpoint
         xyz = torch.mul(xyz_static, values.unsqueeze(dim=1))
-        return seq, values, idx, ret, xyz_static, xyz
+        return xyz_static, xyz, seq, ret
+
+class MIPool(nn.Module):
+    def __init__(self, num_sample, num_agg, num_channels):
+        super().__init__()
+        '''
+        num_sample: Number of sampled points
+        num_agg: Number of aggregated points
+        '''
+        self.num_sample = num_sample
+        self.num_agg = num_agg
+        self.sampler = IndexSelect(num_sample, num_channels, neighs=self.k // 2)
+        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
+                                  nn.ReLU())
+
+    def forward(self, input_coords, input_feats):
+        pool_coords_static, pool_coords, pool_feats, ret = self.sampler(input_coords, input_feats)
+        agg_features = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
+        pool_feats = torch.cat((pool_feats, agg_features), dim=1)
+        pool_feats = self.conv(pool_feats)
+        return pool_coords_static, pool_coords, pool_feats, ret
 
 def mi_loss(ret):
     N = ret.shape[1] // 2
