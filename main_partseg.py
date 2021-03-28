@@ -280,7 +280,7 @@ def test(args, io):
         label_one_hot = torch.from_numpy(label_one_hot.astype(np.float32))
         data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
         data = data.permute(0, 2, 1)
-        seg_pred, node1, node2, node3, node1_static, node2_static = model(data, label_one_hot)
+        seg_pred = model(data, label_one_hot)
         seg_pred = seg_pred.permute(0, 2, 1).contiguous()
         pred = seg_pred.max(dim=2)[1]
         seg_np = seg.cpu().numpy()
@@ -290,6 +290,13 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
+        data_pred = np.concatenate([data.permute(0, 2, 1).contiguous().cpu().numpy(), np.expand_dims(seg_np, -1), np.expand_dims(pred_np, -1)], -1)
+        print("data_pred.shape:{}".format(data_pred.shape))
+        for i in range(data_pred.shape[0]):
+            np.save(BASE_DIR + '/ckpt/partseg/%s/visu/pred%02d_%04d.npy' % (
+            args.exp_name, label[i], batch_count * args.test_batch_size + i),
+                    data_pred[i, :, :])
+
         # if args.visu and batch_count % 5 == 0:
         #     for i in range(data.shape[0]):
         #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
