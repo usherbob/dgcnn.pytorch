@@ -25,7 +25,7 @@ import sklearn.metrics as metrics
 
 
 def _init_():
-    ckpt_dir = BASE_DIR + '/ckpt/cls'
+    ckpt_dir = BASE_DIR + '/ckpt/semseg'
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir + '/' + args.exp_name):
@@ -34,7 +34,7 @@ def _init_():
         os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'models')
     if not os.path.exists(ckpt_dir + '/' + args.exp_name + '/' + 'visu'):
         os.makedirs(ckpt_dir + '/' + args.exp_name + '/' + 'visu')
-    os.system('cp main_cls.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'main_cls.py.backup')
+    os.system('cp main_semseg.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'main_semseg.py.backup')
     os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream(BASE_DIR + '/ckpt/cls/' + args.exp_name + '/run.log')
+    io = IOStream(BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
