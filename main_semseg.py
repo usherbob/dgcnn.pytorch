@@ -110,7 +110,7 @@ def train(args, io):
             seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
+            loss_cd = compute_chamfer_distance(node1, data[:, :3, :]) + compute_chamfer_distance(node2, node1_static) \
                       + compute_chamfer_distance(node3, node2_static)
             loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
             loss = loss_cls + loss_mi + args.cd_weights * loss_cd
@@ -177,7 +177,7 @@ def train(args, io):
                 seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, 13), seg.view(-1, 1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
+                loss_cd = compute_chamfer_distance(node1, data[:, :3, :]) + compute_chamfer_distance(node2, node1_static) \
                           + compute_chamfer_distance(node3, node2_static)
                 loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
                 loss = loss_cls + loss_mi + args.cd_weights * loss_cd
