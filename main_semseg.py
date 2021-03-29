@@ -34,10 +34,10 @@ def _init_():
         os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'models')
     if not os.path.exists(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'visu'):
         os.makedirs(BASE_DIR+'/ckpt/semseg/'+args.exp_name+'/'+'visu')
-    os.system('cp main_semseg.py /opt/data/private/ckpt/semseg'+'/'+args.exp_name+'/'+'main_semseg.py.backup')
-    os.system('cp model.py /opt/data/private/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
-    os.system('cp util.py /opt/data/private/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
-    os.system('cp data.py /opt/data/private/ckpt/semseg' + '/' + args.exp_name + '/' + 'data.py.backup')
+    os.system('cp main_semseg.py ' + BASE_DIR +'/ckpt/semseg'+'/'+args.exp_name+'/'+'main_semseg.py.backup')
+    os.system('cp model.py ' + BASE_DIR +'/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
+    os.system('cp util.py ' + BASE_DIR +'/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
+    os.system('cp data.py ' + BASE_DIR +'/ckpt/semseg' + '/' + args.exp_name + '/' + 'data.py.backup')
 
 
 def calculate_sem_IoU(pred_np, seg_np):
