@@ -128,7 +128,7 @@ def train(args, io):
             loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
             # loss_seg = softmax_segmenter(logits_seg, seg)
             loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_seg + loss_cd
+            loss = loss_cls + loss_seg + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits_cls.max(dim=1)[1]
@@ -186,7 +186,7 @@ def train(args, io):
                 loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
                 # loss_seg = softmax_segmenter(logits_seg, seg)
                 loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_seg + loss_cd
+                loss = loss_cls + loss_seg + args.cd_weights * loss_cd
                 preds = logits_cls.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -263,6 +263,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
     parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
                         help='Path to data and ckpt')
+    parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
+                        help='Name of the experiment')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
                         choices=['pointnet', 'dgcnn'],
                         help='Model to use, [pointnet, dgcnn]')
@@ -304,6 +306,8 @@ if __name__ == "__main__":
     parser.add_argument('--file_name', type=str, default='bg', metavar='N',
                         choices=['bg', 't25', 't25r', 't50r', 'rs75'],
                         help='file name for scan object dataset')
+    parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
+                        help='weights of cd_loss')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
