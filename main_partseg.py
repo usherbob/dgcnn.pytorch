@@ -293,17 +293,17 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
-        if args.visu and batch_count % 5 == 0:
+        if args.visu:
             for i in range(data.shape[0]):
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%02d_%04d.npy' % (args.exp_name, label[i], batch_count * args.test_batch_size + i),
                         data[i, :, :].detach().cpu().numpy())
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%02d_%04d.npy' % (args.exp_name, label[i], batch_count * args.test_batch_size + i),
                         node1_static[i, :, :].detach().cpu().numpy())
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%04d.npy' % (
-                args.exp_name, batch_count * args.test_batch_size + i),
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%02d_%04d.npy' % (
+                args.exp_name, label[i], batch_count * args.test_batch_size + i),
                         node2_static[i, :, :].detach().cpu().numpy())
-                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%04d.npy' % (
-                args.exp_name, batch_count * args.test_batch_size + i),
+                np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%02d_%04d.npy' % (
+                args.exp_name, label[i], batch_count * args.test_batch_size + i),
                         node3_static[i, :, :].detach().cpu().numpy())
 
     test_true_cls = np.concatenate(test_true_cls)
