@@ -533,7 +533,6 @@ class DGCNN_partseg(nn.Module):
         self.args = args
         self.seg_num_all = seg_num_all
         self.k = args.k
-        self.transform_net = Transform_Net(args)
 
         self.pool1 = RandPool(self.args.num_points//4,  self.k, 64)
         self.pool2 = RandPool(self.args.num_points//16, self.k, 64)
@@ -563,13 +562,6 @@ class DGCNN_partseg(nn.Module):
 
     def forward(self, x, l):
         batch_size = x.size(0)
-
-        x_ = get_graph_feature(x, k=self.k)  # (batch_size, 3, num_points) -> (batch_size, 3*2, num_points, k)
-        t = self.transform_net(x_)           # (batch_size, 3, 3)
-        x = x.transpose(2, 1)                # (batch_size, 3, num_points) -> (batch_size, num_points, 3)
-        x = torch.bmm(x, t)                  # (batch_size, num_points, 3) * (batch_size, 3, 3) -> (batch_size, num_points, 3)
-        x = x.transpose(2, 1)                # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
-
         node0 = x
 
         x0  = self.ec0(x)
