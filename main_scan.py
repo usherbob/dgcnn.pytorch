@@ -245,10 +245,10 @@ def test(args, io):
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
                 np.save(
-                    BASE_DIR + '/ckpt/scan/%s/visu/node0_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                    BASE_DIR + '/ckpt/scan/%s/visu/node0_%02d_%04d.npy' % (args.exp_name, label[i], count * args.test_batch_size + i),
                     data[i, :, :].detach().cpu().numpy())
                 np.save(
-                    BASE_DIR + '/ckpt/scan/%s/visu/node1_%04d.npy' % (args.exp_name, count * args.test_batch_size + i),
+                    BASE_DIR + '/ckpt/scan/%s/visu/node1_%02d_%04d.npy' % (args.exp_name, label[i], count * args.test_batch_size + i),
                     node1[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
