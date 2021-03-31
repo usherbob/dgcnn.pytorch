@@ -35,8 +35,8 @@ def _init_():
         os.makedirs(ckpt_dir+'/'+args.exp_name)
     if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'models'):
         os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'models')
-    if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'visu'):
-        os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'visu')
+    if not os.path.exists(ckpt_dir+'/'+args.exp_name+'/'+'pred'):
+        os.makedirs(ckpt_dir+'/'+args.exp_name+'/'+'pred')
     os.system('cp main_partseg.py '+ckpt_dir+'/'+args.exp_name+'/'+'main_partseg.py.backup')
     os.system('cp model.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'util.py.backup')
@@ -273,18 +273,12 @@ def test(args, io):
         test_true_seg.append(seg_np)
         test_pred_seg.append(pred_np)
         test_label_seg.append(label.reshape(-1))
-        # if args.visu and batch_count % 5 == 0:
-        #     for i in range(data.shape[0]):
-        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node0_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-        #                 data[i, :, :].detach().cpu().numpy())
-        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node1_%04d.npy' % (args.exp_name, batch_count * args.test_batch_size + i),
-        #                 node1_static[i, :, :].detach().cpu().numpy())
-        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node2_%04d.npy' % (
-        #         args.exp_name, batch_count * args.test_batch_size + i),
-        #                 node2_static[i, :, :].detach().cpu().numpy())
-        #         np.save(BASE_DIR+'/ckpt/partseg/%s/visu/node3_%04d.npy' % (
-        #         args.exp_name, batch_count * args.test_batch_size + i),
-        #                 node3_static[i, :, :].detach().cpu().numpy())
+        if args.visu:
+            pred_ = torch.cat([data, torch.unsqueeze(pred.to(torch.float), dim=1)], dim=1)
+            for i in range(data.shape[0]):
+                np.save(BASE_DIR + '/ckpt/partseg/%s/pred/pred%02d_%04d.npy' % (
+                    args.exp_name, label[i], batch_count * args.test_batch_size + i),
+                        pred_[i, :, :].detach().cpu().numpy())
 
     test_true_cls = np.concatenate(test_true_cls)
     test_pred_cls = np.concatenate(test_pred_cls)
