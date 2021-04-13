@@ -142,20 +142,6 @@ class PointNet_scan(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256 * 2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.ReLU())
-        self.conv6 = nn.Sequential(nn.Conv1d(2*args.emb_dims + 256, 128, kernel_size=1, bias=False),
-                                   self.bn6,
-                                   nn.ReLU())
-        self.conv7 = nn.Sequential(nn.Conv1d(128 + 256, 128, kernel_size=1, bias=False),
-                                   self.bn7,
-                                   nn.ReLU())
-        self.conv8 = nn.Sequential(nn.Conv1d(128 + 64, 128, kernel_size=1, bias=False),
-                                   self.bn8,
-                                   nn.ReLU())
-        self.conv9 = nn.Sequential(nn.Conv1d(128 + 64, 128, kernel_size=1, bias=False),
-                                   self.bn9,
-                                   nn.ReLU())
-        self.dp3 = nn.Dropout(p=args.dropout)
-        self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
         self.pool1 = Pool(args.num_points // 4, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims * 2, 512, bias=False)
@@ -199,27 +185,7 @@ class PointNet_scan(nn.Module):
         x = self.dp2(x)
         logits_cls = self.linear3(x)  # (batch_size, 256) -> (batch_size, output_channels)
 
-        ## segmentation
-        x = vector.unsqueeze(-1).repeat(1, 1, x4.shape[-1])  # (batch_size, 64, num_points//4)
-        x = torch.cat((x, x4), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv6(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
-
-        x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
-
-        x = unpool(node1, xyz, x)
-        # print('shape of x2: {}'.format(x2.shape))
-        # print('shape of x: {}'.format(x.shape))
-        x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points)
-        x = self.conv8(x)  # (batch_size, 256+64, num_points) -> (batch_size, 256, num_points)
-
-        x = torch.cat((x, x1), dim=1)  # (batch_size, 256+64, num_points)
-        x = self.conv9(x)  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
-        x = self.dp3(x)
-
-        logits_seg = self.conv10(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
-
-        return logits_cls, logits_seg, node1, node1_static
+        return logits_cls, node1, node1_static
 
 
 class DGCNN_cls(nn.Module):
@@ -341,20 +307,6 @@ class DGCNN_scan(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256 * 2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.conv6 = nn.Sequential(nn.Conv1d(2*args.emb_dims + 256, 128, kernel_size=1, bias=False),
-                                   self.bn6,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv7 = nn.Sequential(nn.Conv1d(128 + 256, 128, kernel_size=1, bias=False),
-                                   self.bn7,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv8 = nn.Sequential(nn.Conv1d(128 + 64, 128, kernel_size=1, bias=False),
-                                   self.bn8,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.conv9 = nn.Sequential(nn.Conv1d(128 + 64, 128, kernel_size=1, bias=False),
-                                   self.bn9,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.dp3 = nn.Dropout(p=args.dropout)
-        self.conv10 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
         self.pool1 = Pool(args.num_points // 4, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims * 2, 512, bias=False)
@@ -406,27 +358,7 @@ class DGCNN_scan(nn.Module):
         x = self.dp2(x)
         logits_cls = self.linear3(x)  # (batch_size, 256) -> (batch_size, output_channels)
 
-        ## segmentation
-        x = vector.unsqueeze(-1).repeat(1, 1, x4.shape[-1])  # (batch_size, 64, num_points//4)
-        x = torch.cat((x, x4), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv6(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
-
-        x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
-        x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
-
-        x = unpool(node1_static, xyz, x)
-        # print('shape of x2: {}'.format(x2.shape))
-        # print('shape of x: {}'.format(x.shape))
-        x = torch.cat((x, x2), dim=1)  # (batch_size, 256+64, num_points)
-        x = self.conv8(x)  # (batch_size, 256+64, num_points) -> (batch_size, 256, num_points)
-
-        x = torch.cat((x, x1), dim=1)  # (batch_size, 256+64, num_points)
-        x = self.conv9(x)  # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
-        x = self.dp3(x)
-
-        logits_seg = self.conv10(x)  # (batch_size, 128, num_points) -> (batch_size, seg_num_all, num_points)
-
-        return logits_cls, logits_seg, node1, node1_static
+        return logits_cls, node1, node1_static
 
 
 class Transform_Net(nn.Module):

@@ -110,7 +110,6 @@ def train(args, io):
         train_loss = 0.0
         train_cd_loss = 0.0
         train_cls_loss = 0.0
-        train_seg_loss = 0.0
         count = 0.0
         model.train()
         train_pred = []
@@ -122,20 +121,16 @@ def train(args, io):
             # data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits_cls, logits_seg, node1, node1_static = model(data)
+            logits_cls, node1, node1_static = model(data)
             loss_cls = criterion(logits_cls, label)
-            logits_seg = logits_seg.permute(0, 2, 1).contiguous()
-            loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
-            # loss_seg = softmax_segmenter(logits_seg, seg)
             loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_seg + args.cd_weights * loss_cd
+            loss = loss_cls + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits_cls.max(dim=1)[1]
             count += batch_size
             train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
-            train_seg_loss += loss_seg.item() * batch_size
             train_cd_loss += loss_cd.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
@@ -150,11 +145,10 @@ def train(args, io):
 
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_seg: %.6f, loss_cd: %.6f, train acc: %.6f, train avg acc: %.6f' \
+        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, train acc: %.6f, train avg acc: %.6f' \
                                                                                  % (epoch,
                                                                                     train_loss * 1.0 / count,
                                                                                     train_cls_loss * 1.0 / count,
-                                                                                    train_seg_loss * 1.0 / count,
                                                                                     train_cd_loss * 1.0 / count,
                                                                                     metrics.accuracy_score(
                                                                                         train_true, train_pred),
@@ -168,7 +162,6 @@ def train(args, io):
         test_loss = 0.0
         test_cd_loss = 0.0
         test_cls_loss = 0.0
-        test_seg_loss = 0.0
         count = 0.0
         model.eval()
         test_pred = []
@@ -180,18 +173,14 @@ def train(args, io):
                 data, label, seg = data.to(device), label.to(device), seg.to(device)
                 # data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits_cls, logits_seg, node1, node1_static = model(data)
+                logits_cls, node1, node1_static = model(data)
                 loss_cls = criterion(logits_cls, label)
-                logits_seg = logits_seg.permute(0, 2, 1).contiguous()
-                loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
-                # loss_seg = softmax_segmenter(logits_seg, seg)
                 loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_seg + args.cd_weights * loss_cd
+                loss = loss_cls + args.cd_weights * loss_cd
                 preds = logits_cls.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
-                test_seg_loss += loss_seg.item() * batch_size
                 test_cd_loss += loss_cd.item() * batch_size
                 test_true.append(label.cpu().numpy())
                 test_pred.append(preds.detach().cpu().numpy())
@@ -199,11 +188,10 @@ def train(args, io):
         test_pred = np.concatenate(test_pred)
         test_acc = metrics.accuracy_score(test_true, test_pred)
         avg_per_class_acc = metrics.balanced_accuracy_score(test_true, test_pred)
-        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_seg: %.6f, loss_cd: %.6f, test acc: %.6f, test avg acc: %.6f' \
+        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_cd: %.6f, test acc: %.6f, test avg acc: %.6f' \
                                                                              % (epoch,
                                                                                 test_loss * 1.0 / count,
                                                                                 test_cls_loss * 1.0 / count,
-                                                                                test_seg_loss * 1.0 / count,
                                                                                 test_cd_loss * 1.0 / count,
                                                                                 test_acc,
                                                                                 avg_per_class_acc)
@@ -238,7 +226,7 @@ def test(args, io):
         count += 1
         data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
         # data = data.permute(0, 2, 1)
-        logits_cls, logits_seg, node1, node1_static = model(data)
+        logits_cls, node1, node1_static = model(data)
         preds = logits_cls.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
