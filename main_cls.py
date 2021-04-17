@@ -194,6 +194,8 @@ def test(args, io):
 
     model = nn.DataParallel(model)
     model.load_state_dict(torch.load(args.model_path))
+    ckpt_dir = BASE_DIR + '/ckpt/cls'
+    os.system('cp ' + args.model_path + ' ' + ckpt_dir + '/' + args.exp_name + '/' + 'models/')
     model = model.eval()
     test_true = []
     test_pred = []
