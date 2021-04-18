@@ -34,6 +34,8 @@ def _init_():
         os.makedirs(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'models')
     if not os.path.exists(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'visu'):
         os.makedirs(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'visu')
+    if not os.path.exists(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'pred'):
+        os.makedirs(BASE_DIR + '/ckpt/semseg/'+args.exp_name+'/'+'pred')
     os.system('cp main_semseg.py ' + BASE_DIR + '/ckpt/semseg' + '/'+args.exp_name+'/'+'main_semseg.py.backup')
     os.system('cp model.py ' + BASE_DIR + '/ckpt/semseg' + '/' + args.exp_name + '/' + 'model.py.backup')
     os.system('cp util.py ' + BASE_DIR + '/ckpt/semseg' + '/' + args.exp_name + '/' + 'util.py.backup')
@@ -195,6 +197,13 @@ def train(args, io):
 
 
 def test(args, io):
+    data_dir = args.base_dir + "/data"
+    h5py_data_file = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data')
+    # load room name
+    with open(os.path.join(data_dir, "all_files.txt")) as f:
+        all_files = [line.rstrip() for line in f]
+    with open(os.path.join(data_dir, "room_filelist.txt")) as f:
+        room_filelist = [line.rstrip() for line in f]
     all_true_cls = []
     all_pred_cls = []
     all_true_seg = []
@@ -207,6 +216,21 @@ def test(args, io):
                                      batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
             device = torch.device("cuda" if args.cuda else "cpu")
+
+            area_name = "area"+"_"+test_area
+            room_names = []
+            room_idx = []
+            last_path = None
+            for i, room_path in enumerate(room_filelist):
+                if area_name in room_path:
+                    if room_path != last_path:
+                        name = room_path.split("_")[-2]+"_"+room_path.split("_")[-1]
+                        room_names.append(name)
+                        room_idx.append(i)
+                        last_path = room_path
+
+            if not os.path.exists(BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/' + 'pred' + "/" + area_name):
+                os.makedirs(BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/' + 'pred' + "/" + area_name)
 
             #Try to load models
             if args.model == 'dgcnn':
@@ -221,6 +245,7 @@ def test(args, io):
             test_pred_cls = []
             test_true_seg = []
             test_pred_seg = []
+            room_count = 0
             for data, seg in test_loader:
                 batch_count += 1
                 data, seg = data.to(device), seg.to(device)
@@ -234,17 +259,29 @@ def test(args, io):
                 test_pred_cls.append(pred_np.reshape(-1))
                 test_true_seg.append(seg_np)
                 test_pred_seg.append(pred_np)
-                if args.visu and batch_count % 5 == 0:
-                    for i in range(data.shape[0]):
-                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node0_%04d.npy' % (
-                        args.exp_name, batch_count * args.test_batch_size + i),
-                                data[i, :3, :].detach().cpu().numpy())
-                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node1_%04d.npy' % (
-                        args.exp_name, batch_count * args.test_batch_size + i),
-                                node1[i, :, :].detach().cpu().numpy())
-                        np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node2_%04d.npy' % (
-                            args.exp_name, batch_count * args.test_batch_size + i),
-                                node2[i, :, :].detach().cpu().numpy())
+
+                if batch_count != room_idx[room_count]:
+                    room_path = BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/' + 'pred' + "/" + area_name + "/" + room_names[room_count] + ".txt"
+                    pred = np.concatenate(pred, axis=0)
+                    np.savetxt(room_path, pred)
+                    pred = []
+                    room_count += 1
+                else:
+                    data_label = np.concatenate([data[:, :, 6:].cpu().numpy(), pred_np, seg_np], axis=0)
+                    pred.append(data_label)
+
+
+                # if args.visu and batch_count % 5 == 0:
+                #     for i in range(data.shape[0]):
+                #         np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node0_%04d.npy' % (
+                #         args.exp_name, batch_count * args.test_batch_size + i),
+                #                 data[i, :3, :].detach().cpu().numpy())
+                #         np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node1_%04d.npy' % (
+                #         args.exp_name, batch_count * args.test_batch_size + i),
+                #                 node1[i, :, :].detach().cpu().numpy())
+                #         np.save(BASE_DIR + '/ckpt/semseg/%s/visu/node2_%04d.npy' % (
+                #             args.exp_name, batch_count * args.test_batch_size + i),
+                #                 node2[i, :, :].detach().cpu().numpy())
 
             test_true_cls = np.concatenate(test_true_cls)
             test_pred_cls = np.concatenate(test_pred_cls)
@@ -293,7 +330,7 @@ if __name__ == "__main__":
                         choices=['1', '2', '3', '4', '5', '6', 'all'])
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--test_batch_size', type=int, default=16, metavar='batch_size',
+    parser.add_argument('--test_batch_size', type=int, default=1, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of episode to train ')
