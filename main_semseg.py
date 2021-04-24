@@ -198,17 +198,14 @@ def train(args, io):
 
 def test(args, io):
     data_dir = args.base_dir + "/data"
-    h5py_data_file = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data')
+    h5py_data_file = os.path.join(data_dir, 'indoor3d_sem_seg_hdf5_data')
     # load room name
-    with open(os.path.join(data_dir, "all_files.txt")) as f:
-        all_files = [line.rstrip() for line in f]
-    with open(os.path.join(data_dir, "room_filelist.txt")) as f:
+    with open(os.path.join(h5py_data_file, "room_filelist.txt")) as f:
         room_filelist = [line.rstrip() for line in f]
     all_true_cls = []
     all_pred_cls = []
     all_true_seg = []
     all_pred_seg = []
-    batch_count = 0
     for test_area in range(1,7):
         test_area = str(test_area)
         if (args.test_area == 'all') or (test_area == args.test_area):
@@ -217,10 +214,11 @@ def test(args, io):
 
             device = torch.device("cuda" if args.cuda else "cpu")
 
-            area_name = "area"+"_"+test_area
+            area_name = "Area"+"_"+test_area
             room_names = []
             room_idx = []
-            last_path = None
+            last_path = "nothing"
+            print(area_name)
             for i, room_path in enumerate(room_filelist):
                 if area_name in room_path:
                     if room_path != last_path:
@@ -228,6 +226,10 @@ def test(args, io):
                         room_names.append(name)
                         room_idx.append(i)
                         last_path = room_path
+            begin_idx = room_idx[0]
+            for i in range(len(room_idx)):
+                room_idx[i] -= begin_idx
+            print("room_idx:{}".format(room_idx))
 
             if not os.path.exists(BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/' + 'pred' + "/" + area_name):
                 os.makedirs(BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/' + 'pred' + "/" + area_name)
@@ -246,8 +248,10 @@ def test(args, io):
             test_true_seg = []
             test_pred_seg = []
             room_count = 0
+            batch_count = 0
+            room_idx.append(len(test_loader))
+            pred_result = []
             for data, seg in test_loader:
-                batch_count += 1
                 data, seg = data.to(device), seg.to(device)
                 data = data.permute(0, 2, 1)
                 seg_pred, node1, node2, node3 = model(data)
@@ -260,16 +264,20 @@ def test(args, io):
                 test_true_seg.append(seg_np)
                 test_pred_seg.append(pred_np)
 
-                if batch_count != room_idx[room_count]:
+                if batch_count != 0 and batch_count == room_idx[room_count+1]:
                     room_path = BASE_DIR + '/ckpt/semseg/' + args.exp_name + '/' + 'pred' + "/" + area_name + "/" + room_names[room_count] + ".txt"
-                    pred = np.concatenate(pred, axis=0)
-                    np.savetxt(room_path, pred)
-                    pred = []
+                    pred_result = np.concatenate(pred_result, axis=0)
+                    print("save file")
+                    np.savetxt(room_path, pred_result)
+                    data_label = np.concatenate([data.squeeze()[6:, :].cpu().numpy(), pred_np, seg_np], axis=0)
+                    data_label = np.transpose(data_label, (1,0))
+                    pred_result = [data_label]
                     room_count += 1
                 else:
-                    data_label = np.concatenate([data[:, :, 6:].cpu().numpy(), pred_np, seg_np], axis=0)
-                    pred.append(data_label)
-
+                    data_label = np.concatenate([data.squeeze()[6:, :].cpu().numpy(), pred_np, seg_np], axis=0)
+                    data_label = np.transpose(data_label, (1,0))
+                    pred_result.append(data_label)
+                batch_count += 1
 
                 # if args.visu and batch_count % 5 == 0:
                 #     for i in range(data.shape[0]):

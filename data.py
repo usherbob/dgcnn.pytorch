@@ -132,7 +132,7 @@ def prepare_test_data_semseg(BASE_DIR = '/opt/data/private'):
 def load_data_semseg(partition, test_area, BASE_DIR = '/opt/data/private'):
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     # download_S3DIS()
-    prepare_test_data_semseg()
+    # prepare_test_data_semseg()
     # if partition == 'train':
     data_dir = os.path.join(DATA_DIR, 'indoor3d_sem_seg_hdf5_data')
     # else:
