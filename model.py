@@ -84,7 +84,8 @@ class PointNet(nn.Module):
         self.dp1 = nn.Dropout()
         self.linear2 = nn.Linear(512, output_channels)
 
-        self.pool1 = Pool(self.args.num_sample, 64, 0.2)
+        if self.args.pool:
+            self.pool1 = Pool(self.args.num_sample, 64, 0.2)
 
     def forward(self, x):
         xyz = copy.deepcopy(x)
@@ -92,9 +93,14 @@ class PointNet(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
-        node1, node_features_1, node1_static = self.pool1(xyz, x)
-        node_features_agg = aggregate(xyz, node1, x, 10)
-        x = torch.cat((node_features_1, node_features_agg), dim=1)
+        if self.args.pool:
+            node1, node_features_1, node1_static = self.pool1(xyz, x)
+            node_features_agg = aggregate(xyz, node1, x, 10)
+            x = torch.cat((node_features_1, node_features_agg), dim=1)
+        else:
+            node1 = copy.deepcopy(xyz)
+            node1_static = copy.deepcopy(xyz)
+            x = torch.cat((x, x), dim=1)
 
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
@@ -218,7 +224,8 @@ class DGCNN_cls(nn.Module):
         self.conv5 = nn.Sequential(nn.Conv1d(256*2, args.emb_dims, kernel_size=1, bias=False),
                                    self.bn5,
                                    nn.LeakyReLU(negative_slope=0.2))
-        self.pool1 = Pool(args.num_sample, 128, 0.2)
+        if self.args.pool:
+            self.pool1 = Pool(args.num_sample, 128, 0.2)
         self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -239,12 +246,18 @@ class DGCNN_cls(nn.Module):
         x = self.conv2(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 64, num_points, k)
         x2 = x.max(dim=-1, keepdim=False)[0]    # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
-        # pool(sample and aggregate)
         x_t1_ = torch.cat((x1, x2), dim=1)
         x_t1 = self.conv2_m(x_t1_)
-        node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
-        node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
-        x = torch.cat((node_features_1, node_features_agg), dim=1)
+
+        # pool(sample and aggregate)
+        if self.args.pool:
+            node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
+            node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
+            x = torch.cat((node_features_1, node_features_agg), dim=1)
+        else:
+            node1 = copy.deepcopy(xyz)
+            node1_static = copy.deepcopy(xyz)
+            x = torch.cat((x_t1_, x_t1_), dim=1)
 
         x = get_graph_feature(x, k=self.k//2)     # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
         x = self.conv3(x)                       # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
