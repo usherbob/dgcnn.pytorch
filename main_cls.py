@@ -271,8 +271,8 @@ if __name__ == "__main__":
                         help='ModelNet10 or ModelNet40')
     parser.add_argument('--cd_weights', type=float, default=1.0, metavar='LR',
                         help='weights of cd_loss')
-    parser.add_argument('--pool', action='store_false',
-                        help='whether use pooling module')
+    parser.add_argument('--nopool', action='store_true',
+                        help='not use pooling module')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
