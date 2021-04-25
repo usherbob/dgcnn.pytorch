@@ -240,6 +240,8 @@ if __name__ == "__main__":
                         help='Size of batch)')
     parser.add_argument('--epochs', type=int, default=250, metavar='N',
                         help='number of episode to train ')
+    parser.add_argument('--num_classes', type=int, default=40, metavar='N',
+                        help='use ModelNet40 or ModelNet10')
     parser.add_argument('--use_sgd', type=bool, default=True,
                         help='Use SGD')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
