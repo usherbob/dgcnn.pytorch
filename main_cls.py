@@ -90,20 +90,25 @@ def train(args, io):
         model.train()
         train_pred = []
         train_true = []
+        train_time = 0.0
         for data, label in train_loader:
             data, label = data.to(device), label.to(device).squeeze()
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
+            start = time.time()
             logits = model(data)
             loss = criterion(logits, label)
             loss.backward()
             opt.step()
+            dur = time.time() - start
+            train_time += dur
             preds = logits.max(dim=1)[1]
             count += batch_size
             train_loss += loss.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
+        print("train each batch use time: %.6f seconds with batch_size %02d" % (train_time / len(train_loader), args.batch_size))
         if args.scheduler == 'cos':
             scheduler.step()
         elif args.scheduler == 'step':
@@ -112,6 +117,7 @@ def train(args, io):
             if opt.param_groups[0]['lr'] < 1e-5:
                 for param_group in opt.param_groups:
                     param_group['lr'] = 1e-5
+
 
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
@@ -160,7 +166,7 @@ def train(args, io):
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), '/ceph/ckpt/cls/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), BASE_DIR + '/ckpt/cls' + '/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
@@ -183,17 +189,23 @@ def test(args, io):
     test_true = []
     test_pred = []
     count = 0
-    start = time.time()
+    # start = time.time()
+    inf_time = 0.0
     for data, label in test_loader:
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
+        start = time.time()
         logits = model(data)
+        dur = time.time() - start
+        inf_time += dur
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
-    end = time.time()
-    print("propagation uses {} seconds per batch".format((end-start)/count))
+    print("inference each batch use time: %.6f seconds with batch_size %02d" % (
+        inf_time / len(test_loader), args.test_batch_size))
+    # end = time.time()
+    # print("propagation uses {} seconds per batch".format((end-start)/count))
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
