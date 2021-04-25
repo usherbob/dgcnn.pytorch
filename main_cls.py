@@ -65,6 +65,10 @@ def train(args, io):
 
     model = nn.DataParallel(model)
     print("Let's use", torch.cuda.device_count(), "GPUs!")
+    rand_data = torch.randn(args.batch_size, 3, args.num_points)
+    rand_data = rand_data.to(device)
+    flop_dict, _ = flop_count(model, (rand_data))
+    print("model train flops: {}".format(flop_dict))
 
     if args.use_sgd:
         print("Use SGD")
@@ -184,8 +188,12 @@ def test(args, io):
         raise Exception("Not implemented")
 
     model = nn.DataParallel(model)
-    #model.load_state_dict(torch.load(args.model_path))
+    # model.load_state_dict(torch.load(args.model_path))
     model = model.eval()
+    rand_data = torch.randn(args.batch_size, 3, args.num_points)
+    rand_data = rand_data.to(device)
+    flop_dict, _ = flop_count(model, (rand_data))
+    print("model eval flops: {}".format(flop_dict))
     test_true = []
     test_pred = []
     count = 0
