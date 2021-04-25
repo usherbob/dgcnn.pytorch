@@ -188,6 +188,7 @@ class PointNet_scan(nn.Module):
             x = torch.cat((node_features_1, node_features_agg), dim=1)
         else:
             node1 = copy.deepcopy(xyz)
+            node1_static = copy.deepcopy(xyz)
             x = torch.cat((x_t1_, x_t1_), dim=1)
 
         x3 = self.conv3(x)  # (batch_size, 64*2, num_points, k) -> (batch_size, 128, num_points, k)
@@ -217,7 +218,7 @@ class PointNet_scan(nn.Module):
         x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
         x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        if self.args.nopool:
+        if not self.args.nopool:
             x = unpool(node1, xyz, x)
         # print('shape of x2: {}'.format(x2.shape))
         # print('shape of x: {}'.format(x.shape))
@@ -405,6 +406,7 @@ class DGCNN_scan(nn.Module):
             x = torch.cat((node_features_1, node_features_agg), dim=1)
         else:
             node1 = copy.deepcopy(xyz)
+            node1_static = copy.deepcopy(xyz)
             x = torch.cat((x_t1_, x_t1_), dim=1)
 
         x = get_graph_feature(x, k=self.k // 2)  # (batch_size, 64, num_points) -> (batch_size, 64*2, num_points, k)
@@ -437,7 +439,7 @@ class DGCNN_scan(nn.Module):
         x = torch.cat((x, x3), dim=1)  # (batch_size, 256+64, num_points//4)
         x = self.conv7(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
 
-        if self.args.nopool:
+        if not self.args.nopool:
             x = unpool(node1_static, xyz, x)
         # print('shape of x2: {}'.format(x2.shape))
         # print('shape of x: {}'.format(x.shape))

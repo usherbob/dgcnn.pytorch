@@ -15,6 +15,7 @@ Modified by
 
 from __future__ import print_function
 import os
+import time
 import argparse
 import torch
 import torch.nn as nn
@@ -27,6 +28,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, compute_chamfer_distance, IOStream
 import sklearn.metrics as metrics
+from fvcore.nn.flop_count import _DEFAULT_SUPPORTED_OPS, FlopCountAnalysis, flop_count
 
 
 def _init_():
@@ -64,6 +66,10 @@ def train(args, io):
 
     model = nn.DataParallel(model)
     print("Let's use", torch.cuda.device_count(), "GPUs!")
+    # rand_data = torch.randn(args.batch_size, 3, args.num_points)
+    # rand_data = rand_data.to(device)
+    # flop_dict, _ = flop_count(model, (rand_data))
+    # print("model flops: {}".format(flop_dict))
 
     if args.use_sgd:
         print("Use SGD")
@@ -95,17 +101,21 @@ def train(args, io):
         model.train()
         train_pred = []
         train_true = []
+        train_time = 0.0
         for data, label in train_loader:
             data, label = data.to(device), label.to(device).squeeze()
             data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
+            start = time.time()
             logits, node1, node1_static = model(data)
             loss_cls = criterion(logits, label)
             loss_cd = compute_chamfer_distance(node1, data)
             loss = loss_cls + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
+            dur = time.time() - start
+            train_time += dur
             preds = logits.max(dim=1)[1]
             count += batch_size
             train_loss += loss.item() * batch_size
@@ -113,6 +123,7 @@ def train(args, io):
             train_cd_loss += loss_cd.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
+        print("train each batch use time: %.6f seconds with batch_size %02d" % (train_time / len(train_loader), args.batch_size))
         if args.scheduler == 'cos':
             scheduler.step()
         elif args.scheduler == 'step':
@@ -200,11 +211,15 @@ def test(args, io):
     test_true = []
     test_pred = []
     count = 0
+    inf_time = 0.0
     for data, label in test_loader:
         count += 1
         data, label = data.to(device), label.to(device).squeeze()
         data = data.permute(0, 2, 1)
+        start = time.time()
         logits, node1, node1_static = model(data)
+        dur = time.time() - start
+        inf_time += dur
         preds = logits.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
@@ -212,6 +227,7 @@ def test(args, io):
             for i in range(data.shape[0]):
                 np.save('%s/ckpt/cls/%s/visu/node0_%02d_%04d.npy' % (args.base_dir, args.exp_name, label[i], count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
                 np.save('%s/ckpt/cls/%s/visu/node1_%02d_%04d.npy' % (args.base_dir, args.exp_name, label[i], count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
+    print("inference each batch use time: %.6f seconds with batch_size %02d"%(inf_time/len(test_loader), args.test_batch_size))
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)

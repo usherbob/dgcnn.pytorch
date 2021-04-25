@@ -12,6 +12,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+def params_count(model):
+    """
+    Compute the number of parameters.
+    Args:
+        model (model): model to count the number of parameters.
+    """
+    return np.sum([p.numel() for p in model.module.parameters()]).item()
+
 def cal_loss(pred, gold, smoothing=True):
     ''' Calculate cross entropy loss, apply label smoothing if needed. '''
 

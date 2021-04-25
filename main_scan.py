@@ -110,6 +110,7 @@ def train(args, io):
         train_loss = 0.0
         train_cd_loss = 0.0
         train_cls_loss = 0.0
+        train_seg_loss = 0.0
         count = 0.0
         model.train()
         train_pred = []
@@ -165,6 +166,7 @@ def train(args, io):
         test_loss = 0.0
         test_cd_loss = 0.0
         test_cls_loss = 0.0
+        test_seg_loss = 0.0
         count = 0.0
         model.eval()
         test_pred = []
