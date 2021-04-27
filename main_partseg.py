@@ -23,6 +23,8 @@ import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, mi_loss, compute_chamfer_distance, IOStream
 import sklearn.metrics as metrics
+from fvcore.nn.flop_count import _DEFAULT_SUPPORTED_OPS, FlopCountAnalysis, flop_count
+
 
 seg_num = [4, 2, 2, 4, 4, 3, 3, 2, 4, 2, 6, 2, 3, 3, 3, 3]
 index_start = [0, 4, 6, 8, 12, 16, 19, 22, 24, 28, 30, 36, 38, 41, 44, 47]
@@ -248,12 +250,17 @@ def test(args, io):
     model = nn.DataParallel(model)
     model.load_state_dict(torch.load(args.model_path))
     model = model.eval()
+    rand_data = torch.randn(args.batch_size, 3, args.num_points)
+    rand_data = rand_data.to(device)
+    flop_dict, _ = flop_count(model, (rand_data))
+    print("model flops: {}".format(flop_dict))
     batch_count = 0
     test_true_cls = []
     test_pred_cls = []
     test_true_seg = []
     test_pred_seg = []
     test_label_seg = []
+    inf_time = 0.0
     for data, label, seg in test_loader:
         batch_count += 1
         seg = seg - seg_start_index
@@ -263,7 +270,10 @@ def test(args, io):
         label_one_hot = torch.from_numpy(label_one_hot.astype(np.float32))
         data, label_one_hot, seg = data.to(device), label_one_hot.to(device), seg.to(device)
         data = data.permute(0, 2, 1)
+        start = time.time()
         seg_pred = model(data, label_one_hot)
+        dur = time.time() - start
+        inf += dur
         seg_pred = seg_pred.permute(0, 2, 1).contiguous()
         pred = seg_pred.max(dim=2)[1]
         seg_np = seg.cpu().numpy()
@@ -279,7 +289,8 @@ def test(args, io):
                 np.save(BASE_DIR + '/ckpt/partseg/%s/pred/pred%02d_%04d.npy' % (
                     args.exp_name, label[i], batch_count * args.test_batch_size + i),
                         pred_[i, :, :].detach().cpu().numpy())
-
+    print("inference each batch use time: %.6f seconds with batch_size %02d" %
+          (inf_time / len(test_loader), args.test_batch_size))
     test_true_cls = np.concatenate(test_true_cls)
     test_pred_cls = np.concatenate(test_pred_cls)
     test_acc = metrics.accuracy_score(test_true_cls, test_pred_cls)
