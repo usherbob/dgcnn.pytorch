@@ -95,8 +95,11 @@ class PointNet(nn.Module):
 
         if not self.args.nopool:
             node1, node_features_1, node1_static = self.pool1(xyz, x)
-            node_features_agg = aggregate(xyz, node1, x, 10)
-            x = torch.cat((node_features_1, node_features_agg), dim=1)
+            if not self.args.noagg:
+                node_features_agg = aggregate(xyz, node1, x, 10)
+                x = torch.cat((node_features_1, node_features_agg), dim=1)
+            else:
+                x = torch.cat((node_features_1, node_features_1), dim=1)
         else:
             node1 = copy.deepcopy(xyz)
             node1_static = copy.deepcopy(xyz)
@@ -106,7 +109,10 @@ class PointNet(nn.Module):
         x = F.relu(self.bn4(self.conv4(x)))
         x_t2 = F.relu(self.bn5(self.conv5(x)))
 
-        x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
+        if not self.args.nofusion:
+            x = torch.cat((F.adaptive_max_pool1d(x_t1, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
+        else:
+            x = torch.cat((F.adaptive_max_pool1d(x_t2, 1).squeeze(), F.adaptive_max_pool1d(x_t2, 1).squeeze()), dim=1)
         x = F.relu(self.bn6(self.linear1(x)))
         x = self.dp1(x)
         x = self.linear2(x)
@@ -292,8 +298,11 @@ class DGCNN_cls(nn.Module):
         # pool(sample and aggregate)
         if not self.args.nopool:
             node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
-            node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
-            x = torch.cat((node_features_1, node_features_agg), dim=1)
+            if not selg.args.noagg:
+                node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
+                x = torch.cat((node_features_1, node_features_agg), dim=1)
+            else:
+                x = torch.cat((node_features_1, node_features_1), dim=1)
         else:
             node1 = copy.deepcopy(xyz)
             node1_static = copy.deepcopy(xyz)
@@ -310,9 +319,13 @@ class DGCNN_cls(nn.Module):
         x = torch.cat([x3, x4], dim=1)
         x_t2 = self.conv5(x)
 
-        x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
-        x = torch.cat((x1, x2), 1)              # (batch_size, emb_dims*3)
+        if not self.args.nofusion:
+            x1 = F.adaptive_max_pool1d(x_t1, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+            x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)           # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+            x = torch.cat((x1, x2), 1)              # (batch_size, emb_dims*3)
+        else:
+            x2 = F.adaptive_max_pool1d(x_t2, 1).view(batch_size, -1)  # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
+            x = torch.cat((x2, x2), 1)  # (batch_size, emb_dims*3)
 
         x = F.leaky_relu(self.bn6(self.linear1(x)), negative_slope=0.2) # (batch_size, emb_dims*2) -> (batch_size, 512)
         x = self.dp1(x)

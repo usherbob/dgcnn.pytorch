@@ -289,6 +289,10 @@ if __name__ == "__main__":
                         help='weights of cd_loss')
     parser.add_argument('--nopool', action='store_true',
                         help='not use pooling module')
+    parser.add_argument('--nofusion', action='store_true',
+                        help='not use fusion')
+    parser.add_argument('--noagg', action='store_true',
+                        help='not use aggregation module')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
