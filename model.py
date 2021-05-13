@@ -96,7 +96,7 @@ class PointNet(nn.Module):
         if not self.args.nopool:
             node1, node_features_1, node1_static = self.pool1(xyz, x)
             if not self.args.noagg:
-                node_features_agg = aggregate(xyz, node1, x, 10)
+                node_features_agg = aggregate(xyz, node1, x, self.args.num_agg)
                 x = torch.cat((node_features_1, node_features_agg), dim=1)
             else:
                 x = torch.cat((node_features_1, node_features_1), dim=1)
@@ -299,7 +299,7 @@ class DGCNN_cls(nn.Module):
         if not self.args.nopool:
             node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
             if not selg.args.noagg:
-                node_features_agg = aggregate(xyz, node1, x_t1_, self.k)
+                node_features_agg = aggregate(xyz, node1, x_t1_, self.args.num_agg)
                 x = torch.cat((node_features_1, node_features_agg), dim=1)
             else:
                 x = torch.cat((node_features_1, node_features_1), dim=1)

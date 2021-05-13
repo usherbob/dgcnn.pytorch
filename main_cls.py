@@ -273,6 +273,8 @@ if __name__ == "__main__":
                         help='num of points to use')
     parser.add_argument('--num_sample', type=int, default=256,
                         help='num of sampled points in pooling')
+    parser.add_argument('--num_agg', type=int, default=20,
+                        help='num of aggregated points in each neighbor regions')
     parser.add_argument('--dropout', type=float, default=0.5,
                         help='initial dropout rate')
     parser.add_argument('--emb_dims', type=int, default=1024, metavar='N',
