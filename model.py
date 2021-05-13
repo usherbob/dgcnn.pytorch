@@ -298,7 +298,7 @@ class DGCNN_cls(nn.Module):
         # pool(sample and aggregate)
         if not self.args.nopool:
             node1, node_features_1, node1_static = self.pool1(xyz, x_t1_)
-            if not selg.args.noagg:
+            if not self.args.noagg:
                 node_features_agg = aggregate(xyz, node1, x_t1_, self.args.num_agg)
                 x = torch.cat((node_features_1, node_features_agg), dim=1)
             else:
