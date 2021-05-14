@@ -220,6 +220,75 @@ class IndexSelect(nn.Module):
         xyz = torch.mul(xyz_static, values.unsqueeze(dim=1))
         return xyz_static, xyz, seq, ret
 
+
+class GDPool(nn.Module):
+    def __init__(self, num_sample, num_agg, num_channels, p=0.2):
+        '''
+        num_sample: num of kpoints
+        num_agg: num of aggregated points in local features fusion
+        num_channels: feature channels
+        p: dropout rate
+        '''
+        super(Pool, self).__init__()
+        self.num_sample = num_sample
+        self.num_agg = num_agg
+        self.sigmoid = nn.Sigmoid()
+        # principal component
+        self.proj = nn.Conv1d(num_channels, num_channels, 1) # single_head
+        self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
+
+        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
+                                  nn.ReLU())
+
+    def forward(self, input_coords, input_feats):
+        Z = self.drop(input_feats)
+        # adaptive modeling of downsampling
+        vector = torch.max(F.relu(self.proj(Z)).squeeze(), dim=-1, keepdim=True)[0] # bs, C, 1
+        weights = torch.sum(input_feats * vector, dim=1) # bs, n
+        scores = self.sigmoid(weights) # bs, n
+        values, idx = torch.topk(scores, self.num_sample, dim=-1) # bs, 8, k//8
+
+        coords_idx = idx.unsqueeze(2).repeat(1, 1, input_coords.shape[1])
+        coords_idx = coords_idx.permute(0, 2, 1)
+        pool_coords_static = input_coords.gather(2, coords_idx)  # Bx3xnpoint
+        feats_idx = idx.unsqueeze(2).repeat(1, 1, input_feats.shape[1])
+        feats_idx = feats_idx.permute(0, 2, 1)
+        pool_feats_static = input_feats.gather(2, feats_idx)  # Bx3xnpoint
+        ## especially important
+        values = torch.unsqueeze(values, 1)
+        assert values.shape == (input_feats.shape[0], 1, self.k), "values shape error"
+        pool_feats = torch.mul(pool_feats_static, values)
+        pool_coords = torch.mul(pool_coords_static, values)
+
+        agg_feats = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
+        pool_feats = torch.cat((pool_feats, agg_feats), dim=1)
+        pool_feats = self.conv(pool_feats)
+        return pool_coords_static, pool_coords, pool_feats, None
+
+
+class RandPool(nn.Module):
+    def __init__(self, num_sample, num_agg, num_channels):
+        super().__init__()
+        '''
+        num_sample: Number of sampled points
+        num_agg: Number of aggregated points
+        '''
+        self.num_sample = num_sample
+        self.num_agg = num_agg
+        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
+                                  nn.ReLU())
+
+    def forward(self, input_coords, input_feats):
+        pool_coords = input_coords[:, :, :self.num_sample]
+        pool_feats = input_feats[:, :, :self.num_sample]
+        agg_features = aggregate(input_coords, pool_coords, input_feats, self.num_agg)
+        pool_feats = torch.cat((pool_feats, agg_features), dim=1)
+        pool_feats = self.conv(pool_feats)
+        return pool_coords, pool_coords, pool_feats, None
+
+
 class MIPool(nn.Module):
     def __init__(self, num_sample, num_agg, num_channels):
         super().__init__()
@@ -240,6 +309,7 @@ class MIPool(nn.Module):
         pool_feats = torch.cat((pool_feats, agg_features), dim=1)
         pool_feats = self.conv(pool_feats)
         return pool_coords_static, pool_coords, pool_feats, ret
+
 
 def mi_loss(ret):
     N = ret.shape[1] // 2

@@ -107,11 +107,12 @@ def train(args, io):
             logits, ret, node, node_static = model(data)
             loss_cls = criterion(logits, label)
             loss_mi = 0.0
-            for r in ret:
-                loss_mi += mi_loss(r)
+            if args.pool == "MIP":
+                for r in ret:
+                    loss_mi += mi_loss(r)
             loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node_static[0]) + \
                       compute_chamfer_distance(node[2], node_static[1])
-            loss = loss_cls + loss_mi + args.cd_weights * loss_cd
+            loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -164,11 +165,12 @@ def train(args, io):
                 logits, ret, node, node_static = model(data)
                 loss_cls = criterion(logits, label)
                 loss_mi = 0.0
-                for r in ret:
-                    loss_mi = mi_loss(r)
+                if args.pool == "MIP":
+                    for r in ret:
+                        loss_mi = mi_loss(r)
                 loss_cd = compute_chamfer_distance(node[0], data) + compute_chamfer_distance(node[1], node_static[0]) + \
                           compute_chamfer_distance(node[2], node_static[1])
-                loss = loss_cls + loss_mi + args.cd_weights * loss_cd
+                loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
@@ -284,8 +286,15 @@ if __name__ == "__main__":
                         help='visualize atp by saving nodes')
     parser.add_argument('--num_classes', type=int, default=10,
                         help='ModelNet10 or ModelNet40')
+
+    ## pooling config
+    parser.add_argument('--pool', type=str, default=None, metavar='N',
+                        choices=['GDP', 'RDP', 'MIP'],
+                        help='Pooling method implemented')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
+    parser.add_argument('--mi_weights', type=float, default=0.0, metavar='LR',
+                        help='weights of mi_loss')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
