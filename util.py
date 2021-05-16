@@ -238,7 +238,7 @@ class GDPool(nn.Module):
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
         self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels * 2, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(num_channels),
+                                  nn.BatchNorm1d(num_channels * 2),
                                   nn.ReLU())
 
     def forward(self, input_coords, input_feats):
@@ -277,7 +277,7 @@ class RandPool(nn.Module):
         self.num_sample = num_sample
         self.num_agg = num_agg
         self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels * 2, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(num_channels),
+                                  nn.BatchNorm1d(num_channels * 2),
                                   nn.ReLU())
 
     def forward(self, input_coords, input_feats):
@@ -300,7 +300,7 @@ class MIPool(nn.Module):
         self.num_agg = num_agg
         self.sampler = IndexSelect(num_sample, num_channels, neighs=self.num_agg)
         self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels * 2, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(num_channels),
+                                  nn.BatchNorm1d(num_channels * 2),
                                   nn.ReLU())
 
     def forward(self, input_coords, input_feats):
