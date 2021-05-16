@@ -63,7 +63,7 @@ class PointNet(nn.Module):
         x_t1 = F.relu(self.bn2_m(self.conv2_m(x)))
 
         if self.args.pool is not None:
-            node1_static, node1, node_features_1, ret = self.pool1(xyz, x)
+            node1_static, node1, node_features_1, ret = self.pool(xyz, x)
         else:
             node1 = copy.deepcopy(xyz)
             node1_static = copy.deepcopy(xyz)
