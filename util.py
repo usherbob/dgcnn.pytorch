@@ -229,7 +229,7 @@ class GDPool(nn.Module):
         num_channels: feature channels
         p: dropout rate
         '''
-        super(Pool, self).__init__()
+        super().__init__()
         self.num_sample = num_sample
         self.num_agg = num_agg
         self.sigmoid = nn.Sigmoid()

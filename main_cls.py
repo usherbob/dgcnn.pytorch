@@ -284,13 +284,17 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp by saving nodes')
-    parser.add_argument('--num_classes', type=int, default=10,
+    parser.add_argument('--num_classes', type=int, default=40,
                         help='ModelNet10 or ModelNet40')
 
     ## pooling config
     parser.add_argument('--pool', type=str, default=None, metavar='N',
                         choices=['GDP', 'RDP', 'MIP'],
                         help='Pooling method implemented')
+    parser.add_argument('--num_sample', type=int, default=256,
+                        help='num of sampled points')
+    parser.add_argument('--num_agg', type=int, default=20,
+                        help='num of aggregated points in pooling')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
     parser.add_argument('--mi_weights', type=float, default=0.0, metavar='LR',
