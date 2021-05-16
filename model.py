@@ -32,7 +32,7 @@ class PointNet(nn.Module):
         self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
         self.conv2_m = nn.Conv1d(64, args.emb_dims, kernel_size=1, bias=False)
-        self.conv3 = nn.Conv1d(64, 128, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
         self.conv4 = nn.Conv1d(128, 128, kernel_size=1, bias=False)
         self.conv5 = nn.Conv1d(128, args.emb_dims, kernel_size=1, bias=False)
 
