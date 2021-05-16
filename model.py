@@ -67,9 +67,9 @@ class PointNet(nn.Module):
         else:
             node1 = copy.deepcopy(xyz)
             node1_static = copy.deepcopy(xyz)
-            x = torch.cat((x, x), dim=1)
+            node_features_1 = torch.cat((x, x), dim=1)
 
-        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn3(self.conv3(node_features_1)))
         x = F.relu(self.bn4(self.conv4(x)))
         x_t2 = F.relu(self.bn5(self.conv5(x)))
 
