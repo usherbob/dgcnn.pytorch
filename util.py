@@ -257,7 +257,7 @@ class GDPool(nn.Module):
         pool_feats_static = input_feats.gather(2, feats_idx)  # Bx3xnpoint
         ## especially important
         values = torch.unsqueeze(values, 1)
-        assert values.shape == (input_feats.shape[0], 1, self.k), "values shape error"
+        assert values.shape == (input_feats.shape[0], 1, self.num_sample), "values shape error"
         pool_feats = torch.mul(pool_feats_static, values)
         pool_coords = torch.mul(pool_coords_static, values)
 
