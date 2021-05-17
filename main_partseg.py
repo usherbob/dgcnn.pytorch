@@ -119,6 +119,8 @@ def train(args, io):
         train_cd_loss = 0.0
         train_mi_loss = 0.0
         train_cls_loss = 0.0
+        loss_cd = 0.0
+        loss_mi = 0.0
         count = 0.0
         model.train()
         train_true_cls = []
@@ -139,18 +141,20 @@ def train(args, io):
             seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data, label_one_hot)
             seg_pred = seg_pred.permute(0, 2, 1).contiguous()
             loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-            loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
+            if args.cd_weights != 0:
+                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
                       + compute_chamfer_distance(node3, node2_static)
-            loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
-            loss = loss_cls + loss_mi + args.cd_weights * loss_cd
+            if args.mi_weights != 0:
+                loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
+            loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
             pred = seg_pred.max(dim=2)[1]               # (batch_size, num_points)
             count += batch_size
             train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
-            train_cd_loss += loss_cd.item() * batch_size
-            train_mi_loss += loss_mi.item() * batch_size
+            train_cd_loss += loss_cd * batch_size
+            train_mi_loss += loss_mi * batch_size
             seg_np = seg.cpu().numpy()                  # (batch_size, num_points)
             pred_np = pred.detach().cpu().numpy()       # (batch_size, num_points)
             train_true_cls.append(seg_np.reshape(-1))       # (batch_size * num_points)
@@ -214,16 +218,18 @@ def train(args, io):
                 seg_pred, ret1, ret2, ret3, node1, node2, node3, node1_static, node2_static, node3_static = model(data, label_one_hot)
                 seg_pred = seg_pred.permute(0, 2, 1).contiguous()
                 loss_cls = criterion(seg_pred.view(-1, seg_num_all), seg.view(-1,1).squeeze())
-                loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
-                          + compute_chamfer_distance(node3, node2_static)
-                loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
-                loss = loss_cls + loss_mi + args.cd_weights * loss_cd
+                if args.cd_weights != 0:
+                    loss_cd = compute_chamfer_distance(node1, data) + compute_chamfer_distance(node2, node1_static) \
+                              + compute_chamfer_distance(node3, node2_static)
+                if args.mi_weights != 0:
+                    loss_mi = mi_loss(ret1) + mi_loss(ret2) + mi_loss(ret3)
+                loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
                 pred = seg_pred.max(dim=2)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
-                test_cd_loss += loss_cd.item() * batch_size
-                test_mi_loss += loss_mi.item() * batch_size
+                test_cd_loss += loss_cd * batch_size
+                test_mi_loss += loss_mi * batch_size
                 seg_np = seg.cpu().numpy()
                 pred_np = pred.detach().cpu().numpy()
                 test_true_cls.append(seg_np.reshape(-1))
@@ -375,14 +381,16 @@ if __name__ == "__main__":
                         help='Pretrained model path')
     parser.add_argument('--visu', type=bool, default=False,
                         help='visualize atp selection')
-    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
-                        help='weights of cd_loss')
     parser.add_argument('--res', type=bool, default=False,
                         help='Turn on residual connection')
 
     parser.add_argument('--pool', type=str, default=None, metavar='N',
                         choices=['GDP', 'RDP', 'MIP'],
                         help='Pooling method implemented')
+    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
+                        help='weights of cd_loss')
+    parser.add_argument('--mi_weights', type=float, default=0.0, metavar='LR',
+                        help='weights of mi_loss')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir
