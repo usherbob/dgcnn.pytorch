@@ -222,7 +222,7 @@ class IndexSelect(nn.Module):
 
 
 class GDPool(nn.Module):
-    def __init__(self, num_sample, num_agg, num_channels, p=0.2):
+    def __init__(self, num_sample, num_agg, num_channels, truncate=False, p=0.2):
         '''
         num_sample: num of kpoints
         num_agg: num of aggregated points in local features fusion
@@ -232,13 +232,15 @@ class GDPool(nn.Module):
         super().__init__()
         self.num_sample = num_sample
         self.num_agg = num_agg
+        self.truncate = truncate
         self.sigmoid = nn.Sigmoid()
         # principal component
         self.proj = nn.Conv1d(num_channels, num_channels, 1) # single_head
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
-        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels * 2, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(num_channels * 2),
+        if self.truncate:
+            self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
                                   nn.ReLU())
 
     def forward(self, input_coords, input_feats):
@@ -263,12 +265,13 @@ class GDPool(nn.Module):
 
         agg_feats = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
         pool_feats = torch.cat((pool_feats, agg_feats), dim=1)
-        pool_feats = self.conv(pool_feats)
+        if self.truncate:
+            pool_feats = self.conv(pool_feats)
         return pool_coords_static, pool_coords, pool_feats, None
 
 
 class RandPool(nn.Module):
-    def __init__(self, num_sample, num_agg, num_channels):
+    def __init__(self, num_sample, num_agg, num_channels, truncate=False):
         super().__init__()
         '''
         num_sample: Number of sampled points
@@ -276,8 +279,10 @@ class RandPool(nn.Module):
         '''
         self.num_sample = num_sample
         self.num_agg = num_agg
-        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels * 2, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(num_channels * 2),
+        self.truncate = truncate
+        if self.truncate:
+            self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
                                   nn.ReLU())
 
     def forward(self, input_coords, input_feats):
@@ -285,12 +290,13 @@ class RandPool(nn.Module):
         pool_feats = input_feats[:, :, :self.num_sample]
         agg_features = aggregate(input_coords, pool_coords, input_feats, self.num_agg)
         pool_feats = torch.cat((pool_feats, agg_features), dim=1)
-        pool_feats = self.conv(pool_feats)
+        if self.truncate:
+            pool_feats = self.conv(pool_feats)
         return pool_coords, pool_coords, pool_feats, None
 
 
 class MIPool(nn.Module):
-    def __init__(self, num_sample, num_agg, num_channels):
+    def __init__(self, num_sample, num_agg, num_channels, truncate=False):
         super().__init__()
         '''
         num_sample: Number of sampled points
@@ -298,16 +304,19 @@ class MIPool(nn.Module):
         '''
         self.num_sample = num_sample
         self.num_agg = num_agg
+        self.truncate = truncate
         self.sampler = IndexSelect(num_sample, num_channels, neighs=self.num_agg)
-        self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels * 2, kernel_size=1, bias=False),
-                                  nn.BatchNorm1d(num_channels * 2),
+        if self.truncate:
+            self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
+                                  nn.BatchNorm1d(num_channels),
                                   nn.ReLU())
 
     def forward(self, input_coords, input_feats):
         pool_coords_static, pool_coords, pool_feats, ret = self.sampler(input_coords, input_feats)
         agg_features = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
         pool_feats = torch.cat((pool_feats, agg_features), dim=1)
-        pool_feats = self.conv(pool_feats)
+        if self.truncate:
+            pool_feats = self.conv(pool_feats)
         return pool_coords_static, pool_coords, pool_feats, ret
 
 
