@@ -498,17 +498,17 @@ class DGCNN_partseg(nn.Module):
         self.k = args.k
 
         if self.args.pool == "GDP":
-            self.pool1 = GDPool(self.args.num_points//4,  self.num_agg, 64, truncate=True)
-            self.pool2 = GDPool(self.args.num_points//16, self.num_agg, 64, truncate=True)
-            self.pool3 = GDPool(self.args.num_points//64, self.num_agg, 64, truncate=True)
+            self.pool1 = GDPool(self.args.num_points//4,  self.k, 64, truncate=True)
+            self.pool2 = GDPool(self.args.num_points//16, self.k, 64, truncate=True)
+            self.pool3 = GDPool(self.args.num_points//64, self.k, 64, truncate=True)
         elif self.args.pool == "RDP":
-            self.pool1 = RDPool(self.args.num_points//4,  self.num_agg, 64, truncate=True)
-            self.pool2 = RDPool(self.args.num_points//16, self.num_agg, 64, truncate=True)
-            self.pool3 = RDPool(self.args.num_points//64, self.num_agg, 64, truncate=True)
+            self.pool1 = RDPool(self.args.num_points//4,  self.k, 64, truncate=True)
+            self.pool2 = RDPool(self.args.num_points//16, self.k, 64, truncate=True)
+            self.pool3 = RDPool(self.args.num_points//64, self.k, 64, truncate=True)
         elif self.args.pool == "MIP":
-            self.pool1 = MIPool(self.args.num_points//4,  self.num_agg, 64, truncate=True)
-            self.pool2 = MIPool(self.args.num_points//16, self.num_agg, 64, truncate=True)
-            self.pool3 = MIPool(self.args.num_points//64, self.num_agg, 64, truncate=True)
+            self.pool1 = MIPool(self.args.num_points//4,  self.k, 64, truncate=True)
+            self.pool2 = MIPool(self.args.num_points//16, self.k, 64, truncate=True)
+            self.pool3 = MIPool(self.args.num_points//64, self.k, 64, truncate=True)
 
         self.ec0 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
         self.pn0 = MLP([64, 1024])
