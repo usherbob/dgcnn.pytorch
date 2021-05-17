@@ -379,8 +379,10 @@ if __name__ == "__main__":
                         help='weights of cd_loss')
     parser.add_argument('--res', type=bool, default=False,
                         help='Turn on residual connection')
-    parser.add_argument('--pool', action='store_false',
-                        help='whether use pooling module')
+
+    parser.add_argument('--pool', type=str, default=None, metavar='N',
+                        choices=['GDP', 'RDP', 'MIP'],
+                        help='Pooling method implemented')
     args = parser.parse_args()
 
     BASE_DIR = args.base_dir

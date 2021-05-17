@@ -539,7 +539,7 @@ class DGCNN_partseg(nn.Module):
         x0  = self.ec0(x)
         x_t0 = torch.max(self.pn0(x0), dim=-1, keepdim=True)[0]
 
-        if self.args.pool:
+        if self.args.pool is not None:
             node1_static, node1, node1_feats, ret1 = self.pool1(node0, x0)
         else:
             node1 = node0
@@ -550,7 +550,7 @@ class DGCNN_partseg(nn.Module):
         if self.args.res:
             x1 = F.relu(x1 + node1_feats)  # (batch_size, 64, num_points//4)
 
-        if self.args.pool:
+        if self.args.pool is not None:
             node2_static, node2, node2_feats, ret2 = self.pool2(node1, x1)
         else:
             node2 = node1
@@ -561,7 +561,7 @@ class DGCNN_partseg(nn.Module):
         if self.args.res:
             x2 = F.relu(x2 + node2_feats)  # (batch_size, 64, num_points//16)
 
-        if self.args.pool:
+        if self.args.pool is not None:
             node3_static, node3, node3_feats, ret3 = self.pool3(node2, x2)
         else:
             node3 = node2
@@ -583,19 +583,19 @@ class DGCNN_partseg(nn.Module):
         x = self.pn4(x)                    # (batch_size, 1088, num_points//64) -> (batch_size, 256, num_points//64)
         x = self.dp1(x)
 
-        if self.args.pool:
+        if self.args.pool is not None:
             x = unpool(node3, node2, x)        # (batch_size, 256, num_points//16)
         x = torch.cat((x, x2), dim=1)      # (batch_size, 256+64, num_points//16)
         x = self.pn5(x)                    # (batch_size, 256+64, num_points//16) -> (batch_size, 256, num_points//16)
         x = self.dp2(x)
 
-        if self.args.pool:
+        if self.args.pool is not None:
             x = unpool(node2, node1, x)        # (batch_size, 256, num_points//4)
         x = torch.cat((x, x1), dim=1)      # (batch_size, 256+64, num_points//4)
         x = self.pn6(x)                    # (batch_size, 256+64, num_points//4) -> (batch_size, 256, num_points//4)
         x = self.dp3(x)
 
-        if self.args.pool:
+        if self.args.pool is not None:
             x = unpool(node1, node0, x)        # (batch_size, 64, num_points)
         x = torch.cat((x, x0), dim=1)      # (batch_size, 256+64, num_points)
         x = self.pn7(x)                    # (batch_size, 256+64, num_points) -> (batch_size, 128, num_points)
