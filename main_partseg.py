@@ -387,9 +387,9 @@ if __name__ == "__main__":
     parser.add_argument('--pool', type=str, default=None, metavar='N',
                         choices=['GDP', 'RDP', 'MIP'],
                         help='Pooling method implemented')
-    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
+    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='CDW',
                         help='weights of cd_loss')
-    parser.add_argument('--mi_weights', type=float, default=0.0, metavar='LR',
+    parser.add_argument('--mi_weights', type=float, default=0.0, metavar='MIW',
                         help='weights of mi_loss')
     args = parser.parse_args()
 

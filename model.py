@@ -612,9 +612,18 @@ class DGCNN_semseg(nn.Module):
         self.args = args
         self.k = args.k
 
-        self.pool0 = MIPool(self.args.num_points // 4, self.k, 64)
-        self.pool1 = MIPool(self.args.num_points // 16, self.k, 64)
-        self.pool2 = MIPool(self.args.num_points // 64, self.k, 64)
+        if self.args.pool == "GDP":
+            self.pool0 = GDPool(self.args.num_points // 4, self.k, 64)
+            self.pool1 = GDPool(self.args.num_points // 16, self.k, 64)
+            self.pool2 = GDPool(self.args.num_points // 64, self.k, 64)
+        elif self.args.pool == "RDP":
+            self.pool0 = RDPool(self.args.num_points // 4, self.k, 64)
+            self.pool1 = RDPool(self.args.num_points // 16, self.k, 64)
+            self.pool2 = RDPool(self.args.num_points // 64, self.k, 64)
+        elif self.args.pool == "MIP":
+            self.pool0 = MIPool(self.args.num_points // 4, self.k, 64)
+            self.pool1 = MIPool(self.args.num_points // 16, self.k, 64)
+            self.pool2 = MIPool(self.args.num_points // 64, self.k, 64)
 
         self.ec1 = EdgeConv(num_neighs=self.k, dims=[9, 64, 64])
         self.ec2 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])
