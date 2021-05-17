@@ -263,8 +263,12 @@ class GDPool(nn.Module):
         pool_feats = torch.mul(pool_feats_static, values)
         pool_coords = torch.mul(pool_coords_static, values)
 
-        agg_feats = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
-        pool_feats = torch.cat((pool_feats, agg_feats), dim=1)
+        if self.num_agg > 0:
+            agg_feats = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
+            pool_feats = torch.cat((pool_feats, agg_feats), dim=1)
+
+        else:
+            pool_feats = torch.cat((pool_feats, pool_feats), dim=1)
         if self.truncate:
             pool_feats = self.conv(pool_feats)
         return pool_coords_static, pool_coords, pool_feats, None
@@ -288,8 +292,13 @@ class RandPool(nn.Module):
     def forward(self, input_coords, input_feats):
         pool_coords = input_coords[:, :, :self.num_sample]
         pool_feats = input_feats[:, :, :self.num_sample]
-        agg_features = aggregate(input_coords, pool_coords, input_feats, self.num_agg)
-        pool_feats = torch.cat((pool_feats, agg_features), dim=1)
+
+        if self.num_agg > 0:
+            agg_feats = aggregate(input_coords, pool_coords, input_feats, self.num_agg)
+            pool_feats = torch.cat((pool_feats, agg_feats), dim=1)
+
+        else:
+            pool_feats = torch.cat((pool_feats, pool_feats), dim=1)
         if self.truncate:
             pool_feats = self.conv(pool_feats)
         return pool_coords, pool_coords, pool_feats, None
@@ -313,8 +322,12 @@ class MIPool(nn.Module):
 
     def forward(self, input_coords, input_feats):
         pool_coords_static, pool_coords, pool_feats, ret = self.sampler(input_coords, input_feats)
-        agg_features = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
-        pool_feats = torch.cat((pool_feats, agg_features), dim=1)
+
+        if self.num_agg > 0:
+            agg_feats = aggregate(input_coords, pool_coords_static, input_feats, self.num_agg)
+            pool_feats = torch.cat((pool_feats, agg_feats), dim=1)
+        else:
+            pool_feats = torch.cat((pool_feats, pool_feats), dim=1)
         if self.truncate:
             pool_feats = self.conv(pool_feats)
         return pool_coords_static, pool_coords, pool_feats, ret
