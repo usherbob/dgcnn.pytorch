@@ -95,6 +95,8 @@ def train(args, io):
         train_mi_loss = 0.0
         train_cd_loss = 0.0
         train_cls_loss = 0.0
+        loss_cd = 0.0
+        loss_mi = 0.0
         count = 0.0
         model.train()
         train_pred = []
@@ -107,9 +109,10 @@ def train(args, io):
             logits, ret, node, node_static = model(data)
             loss_cls = criterion(logits, label)
             loss_mi = 0.0
-            if args.pool == "MIP":
+            if args.mi_weights != 0:
                 loss_mi += mi_loss(ret)
-            loss_cd = compute_chamfer_distance(node, data)
+            if args.cd_weights != 0:
+                loss_cd = compute_chamfer_distance(node, data)
             loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
             loss.backward()
             opt.step()
@@ -118,7 +121,7 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
             train_mi_loss += loss_mi * batch_size
-            train_cd_loss += loss_cd.item() * batch_size
+            train_cd_loss += loss_cd * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
         if args.scheduler == 'cos':
@@ -163,16 +166,17 @@ def train(args, io):
                 logits, ret, node, node_static = model(data)
                 loss_cls = criterion(logits, label)
                 loss_mi = 0.0
-                if args.pool == "MIP":
+                if args.mi_weights != 0:
                     loss_mi = mi_loss(ret)
-                loss_cd = compute_chamfer_distance(node, data)
+                if args.cd_weights != 0:
+                    loss_cd = compute_chamfer_distance(node, data)
                 loss = loss_cls + args.mi_weights * loss_mi + args.cd_weights * loss_cd
                 preds = logits.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
                 test_mi_loss += loss_mi * batch_size
-                test_cd_loss += loss_cd.item() * batch_size
+                test_cd_loss += loss_cd * batch_size
                 test_true.append(label.cpu().numpy())
                 test_pred.append(preds.detach().cpu().numpy())
         test_true = np.concatenate(test_true)

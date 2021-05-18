@@ -25,7 +25,7 @@ from data import ScanObject
 from model import PointNet_scan, DGCNN_scan
 import numpy as np
 from torch.utils.data import DataLoader
-from util import cal_loss, compute_chamfer_distance, IOStream
+from util import cal_loss, mi_loss, compute_chamfer_distance, IOStream
 import sklearn.metrics as metrics
 
 
@@ -46,7 +46,7 @@ class CrossEntropyLossSeg(nn.Module):
 
 
 def _init_():
-    ckpt_dir = '/ceph/ckpt/scan'
+    ckpt_dir = args.base_dir + "/ckpt"
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir + '/' + args.exp_name):
@@ -61,9 +61,9 @@ def _init_():
     os.system('cp data.py ' + ckpt_dir + '/' + args.exp_name + '/' + 'data.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
+    train_loader = DataLoader(ScanObject(h5_filename=args.base_dir+'/data/scanobjectnn/{}'.format(args.file_name), num_points=args.num_points), num_workers=8,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
+    test_loader = DataLoader(ScanObject(h5_filename=args.base_dir+'/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
                                         num_points=args.num_points), num_workers=8, batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -105,8 +105,11 @@ def train(args, io):
         ####################
         train_loss = 0.0
         train_cd_loss = 0.0
+        train_mi_loss = 0.0
         train_cls_loss = 0.0
         train_seg_loss = 0.0
+        loss_cd = 0.0
+        loss_mi = 0.0
         count = 0.0
         model.train()
         train_pred = []
@@ -118,13 +121,15 @@ def train(args, io):
             # data = data.permute(0, 2, 1)
             batch_size = data.size()[0]
             opt.zero_grad()
-            logits_cls, logits_seg, node1, node1_static = model(data)
+            logits_cls, logits_seg, node1, node1_static, ret1 = model(data)
             loss_cls = criterion(logits_cls, label)
             logits_seg = logits_seg.permute(0, 2, 1).contiguous()
             loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
-            # loss_seg = softmax_segmenter(logits_seg, seg)
-            loss_cd = compute_chamfer_distance(node1, data)
-            loss = loss_cls + loss_seg + loss_cd
+            if args.cd_weights != 0:
+                loss_cd = compute_chamfer_distance(node1, data)
+            if args.mi_weights != 0:
+                loss_mi = mi_loss(ret1)
+            loss = loss_cls + args.seg_weights * loss_seg + args.cd_weights * loss_cd + args.mi_weights * loss_mi
             loss.backward()
             opt.step()
             preds = logits_cls.max(dim=1)[1]
@@ -132,7 +137,8 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_cls_loss += loss_cls.item() * batch_size
             train_seg_loss += loss_seg.item() * batch_size
-            train_cd_loss += loss_cd.item() * batch_size
+            train_cd_loss += loss_cd * batch_size
+            train_mi_loss += loss_mi * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
         if args.scheduler == 'cos':
@@ -146,12 +152,13 @@ def train(args, io):
 
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
-        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_seg: %.6f, loss_cd: %.6f, train acc: %.6f, train avg acc: %.6f' \
+        outstr = 'Train %d, loss: %.6f, loss_cls: %.6f, loss_seg: %.6f, loss_cd: %.6f, loss_mi: %.6f, train acc: %.6f, train avg acc: %.6f' \
                                                                                  % (epoch,
                                                                                     train_loss * 1.0 / count,
                                                                                     train_cls_loss * 1.0 / count,
                                                                                     train_seg_loss * 1.0 / count,
                                                                                     train_cd_loss * 1.0 / count,
+                                                                                    train_mi_loss * 1.0 / count,
                                                                                     metrics.accuracy_score(
                                                                                         train_true, train_pred),
                                                                                     metrics.balanced_accuracy_score(
@@ -163,6 +170,7 @@ def train(args, io):
         ####################
         test_loss = 0.0
         test_cd_loss = 0.0
+        test_mi_loss = 0.0
         test_cls_loss = 0.0
         test_seg_loss = 0.0
         count = 0.0
@@ -181,36 +189,41 @@ def train(args, io):
                 logits_seg = logits_seg.permute(0, 2, 1).contiguous()
                 loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
                 # loss_seg = softmax_segmenter(logits_seg, seg)
-                loss_cd = compute_chamfer_distance(node1, data)
-                loss = loss_cls + loss_seg + loss_cd
+                if args.cd_weights != 0:
+                    loss_cd = compute_chamfer_distance(node1, data)
+                if args.mi_weights != 0:
+                    loss_mi = mi_loss(ret1)
+                loss = loss_cls + args.seg_weights * loss_seg + args.cd_weights * loss_cd + args.mi_weights * loss_mi
                 preds = logits_cls.max(dim=1)[1]
                 count += batch_size
                 test_loss += loss.item() * batch_size
                 test_cls_loss += loss_cls.item() * batch_size
                 test_seg_loss += loss_seg.item() * batch_size
-                test_cd_loss += loss_cd.item() * batch_size
+                test_cd_loss += loss_cd * batch_size
+                test_mi_loss += loss_mi * batch_size
                 test_true.append(label.cpu().numpy())
                 test_pred.append(preds.detach().cpu().numpy())
         test_true = np.concatenate(test_true)
         test_pred = np.concatenate(test_pred)
         test_acc = metrics.accuracy_score(test_true, test_pred)
         avg_per_class_acc = metrics.balanced_accuracy_score(test_true, test_pred)
-        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_seg: %.6f, loss_cd: %.6f, test acc: %.6f, test avg acc: %.6f' \
+        outstr = 'Test %d, loss: %.6f, loss_cls: %.6f, loss_seg: %.6f, loss_cd: %.6f, loss_mi: %.6f, test acc: %.6f, test avg acc: %.6f' \
                                                                              % (epoch,
                                                                                 test_loss * 1.0 / count,
                                                                                 test_cls_loss * 1.0 / count,
                                                                                 test_seg_loss * 1.0 / count,
                                                                                 test_cd_loss * 1.0 / count,
+                                                                                test_mi_loss * 1.0 / count,
                                                                                 test_acc,
                                                                                 avg_per_class_acc)
         io.cprint(outstr)
         if test_acc >= best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), '/ceph/ckpt/scan/%s/models/model.t7' % args.exp_name)
+            torch.save(model.state_dict(), args.base_dir + '/ckpt/scan/%s/models/model.t7' % args.exp_name)
 
 
 def test(args, io):
-    test_loader = DataLoader(ScanObject(h5_filename='/ceph/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
+    test_loader = DataLoader(ScanObject(h5_filename=args.base_dir + '/data/scanobjectnn/{}'.format(args.file_name.replace('training', 'test')),
                                         num_points=args.num_points), batch_size=args.test_batch_size, shuffle=False, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -239,8 +252,8 @@ def test(args, io):
         test_pred.append(preds.detach().cpu().numpy())
         if args.visu and count % 5 == 0:
             for i in range(data.shape[0]):
-                np.save('/ceph/ckpt/scan/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
-                np.save('/ceph/ckpt/scan/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
+                np.save(args.base_dir+'/ckpt/scan/%s/visu/node0_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), data[i, :, :].detach().cpu().numpy())
+                np.save(args.base_dir+'/ckpt/scan/%s/visu/node1_%04d.npy' % (args.exp_name, count*args.test_batch_size+i), node1[i, :, :].detach().cpu().numpy())
     test_true = np.concatenate(test_true)
     test_pred = np.concatenate(test_pred)
     test_acc = metrics.accuracy_score(test_true, test_pred)
@@ -295,11 +308,25 @@ if __name__ == "__main__":
     parser.add_argument('--file_name', type=str, default='bg', metavar='N',
                         choices=['bg', 't25', 't25r', 't50r', 'rs75'],
                         help='file name for scan object dataset')
+    parser.add_argument('--seg_weights', type=float, default=1.0, metavar='LR',
+                        help='weights of seg_loss')
+    ## pooling config
+    parser.add_argument('--pool', type=str, default=None, metavar='N',
+                        choices=['GDP', 'RDP', 'MIP'],
+                        help='Pooling method implemented')
+    parser.add_argument('--num_sample', type=int, default=256,
+                        help='num of sampled points')
+    parser.add_argument('--num_agg', type=int, default=20,
+                        help='num of aggregated points in pooling')
+    parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
+                        help='weights of cd_loss')
+    parser.add_argument('--mi_weights', type=float, default=0.0, metavar='LR',
+                        help='weights of mi_loss')
     args = parser.parse_args()
 
     _init_()
 
-    io = IOStream('/ceph/ckpt/scan/' + args.exp_name + '/run.log')
+    io = IOStream(args.base_dir + '/ckpt/scan/' + args.exp_name + '/run.log')
     io.cprint(str(args))
 
     name_lut = {'bg': 'training_objectdataset.h5', 't25': 'training_objectdataset_augmented25_norot.h5',
