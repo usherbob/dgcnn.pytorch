@@ -46,7 +46,7 @@ class CrossEntropyLossSeg(nn.Module):
 
 
 def _init_():
-    ckpt_dir = args.base_dir + "/ckpt"
+    ckpt_dir = args.base_dir + "/ckpt/scan"
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     if not os.path.exists(ckpt_dir + '/' + args.exp_name):

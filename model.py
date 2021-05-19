@@ -393,20 +393,20 @@ class DGCNN_scan(nn.Module):
         self.dp2 = nn.Dropout(p=args.dropout)
         self.linear4 = nn.Linear(256, output_channels)
 
-        self.pn5 = MLP([2 * args.emb_dims + 128, 128])
+        self.pn5 = MLP([256 + 128, 128])
         self.pn6 = MLP([128 + 64, 128])
         self.dp3 = nn.Dropout(p=args.dropout)
         self.conv7 = nn.Conv1d(128, self.seg_num_all, kernel_size=1, bias=False)
 
     def forward(self, x):
-        xyz = copy.deepcopy(x)
+        node0 = copy.deepcopy(x)
 
         x0 = self.ec0(x)
-        x_t0 = torch.max(self.pn0(x0), dim=-1, keepdim=True)[0]
+        x_t0 = torch.max(self.pn0(x0), dim=-1)[0]
 
         # pool(sample and aggregate)
         if self.args.pool is not None:
-            node1_static, node1, node1_feats, ret1 = self.pool1(node0, x0)
+            node1_static, node1, node1_feats, ret1 = self.pool(node0, x0)
         else:
             node1_static = copy.deepcopy(node0)
             node1 = copy.deepcopy(node0)
@@ -414,7 +414,7 @@ class DGCNN_scan(nn.Module):
             ret1 = None
 
         x1 = self.ec1(node1_feats)
-        x_t1 = torch.max(self.pn1(x1), dim=-1, keepdim=True)[0]
+        x_t1 = torch.max(self.pn1(x1), dim=-1)[0]
 
         vector = torch.cat((x_t0, x_t1), 1)  # (batch_size, emb_dims*2)
 
@@ -431,7 +431,7 @@ class DGCNN_scan(nn.Module):
         x = self.pn5(x)  # (batch_size, 256+64, num_points//4) -> (batch_size, 128, num_points//4)
 
         if self.args.pool is not None:
-            x = unpool(node1_static, xyz, x)
+            x = unpool(node1_static, node0, x)
         x = torch.cat((x, x0), dim=1)  # (batch_size, 128+64, num_points)
         x = self.pn6(x)  # (batch_size, 128+64, num_points) -> (batch_size, 128, num_points)
 
