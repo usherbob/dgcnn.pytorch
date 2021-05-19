@@ -265,6 +265,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
+    parser.add_argument('--base_dir', type=str, default='/opt/data/private', metavar='N',
+                        help='Path to data and ckpt')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
     parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
