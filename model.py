@@ -453,9 +453,9 @@ class DGCNN_partseg(nn.Module):
             self.pool2 = GDPool(self.args.num_points//16, self.k, 64, truncate=True)
             self.pool3 = GDPool(self.args.num_points//64, self.k, 64, truncate=True)
         elif self.args.pool == "RDP":
-            self.pool1 = RDPool(self.args.num_points//4,  self.k, 64, truncate=True)
-            self.pool2 = RDPool(self.args.num_points//16, self.k, 64, truncate=True)
-            self.pool3 = RDPool(self.args.num_points//64, self.k, 64, truncate=True)
+            self.pool1 = RandPool(self.args.num_points//4,  self.k, 64, truncate=True)
+            self.pool2 = RandPool(self.args.num_points//16, self.k, 64, truncate=True)
+            self.pool3 = RandPool(self.args.num_points//64, self.k, 64, truncate=True)
         elif self.args.pool == "MIP":
             self.pool1 = MIPool(self.args.num_points//4,  self.k, 64, truncate=True)
             self.pool2 = MIPool(self.args.num_points//16, self.k, 64, truncate=True)

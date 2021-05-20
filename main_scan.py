@@ -184,7 +184,7 @@ def train(args, io):
                 data, label, seg = data.to(device), label.to(device), seg.to(device)
                 # data = data.permute(0, 2, 1)
                 batch_size = data.size()[0]
-                logits_cls, logits_seg, node1, node1_static = model(data)
+                logits_cls, logits_seg, node1, node1_static, ret1 = model(data)
                 loss_cls = criterion(logits_cls, label)
                 logits_seg = logits_seg.permute(0, 2, 1).contiguous()
                 loss_seg = criterion(logits_seg.view(-1, seg_num_all), seg.view(-1, 1).squeeze())
@@ -246,7 +246,7 @@ def test(args, io):
         count += 1
         data, label, seg = data.to(device), label.to(device).squeeze(), seg.to(device)
         # data = data.permute(0, 2, 1)
-        logits_cls, logits_seg, node1, node1_static = model(data)
+        logits_cls, logits_seg, node1, node1_static, ret1 = model(data)
         preds = logits_cls.max(dim=1)[1]
         test_true.append(label.cpu().numpy())
         test_pred.append(preds.detach().cpu().numpy())
