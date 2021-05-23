@@ -256,8 +256,8 @@ class DGCNN_cls(nn.Module):
         x_t1 = self.conv2_m(x_t1_)
 
         # pool(sample and aggregate)
-        if not self.args.nopool:
-            node1_static, node1, node_features_1, ret1 = self.pool1(xyz, x_t1_)
+        if self.args.pool is not None:
+            node1_static, node1, node_features_1, ret1 = self.pool(xyz, x_t1_)
         else:
             node1 = copy.deepcopy(xyz)
             node1_static = copy.deepcopy(xyz)
