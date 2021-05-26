@@ -53,7 +53,7 @@ class PointNet(nn.Module):
         elif self.args.pool == "RDP":
             self.pool = RandPool(self.args.num_sample, self.args.num_agg, 64)
         elif self.args.pool == "MIP":
-            self.pool = MIPool(self.args.num_sample, self.args.num_agg, 64)
+            self.pool = MIPool(self.args.num_sample, self.args.num_agg, 64, self.args.num_neighs)
 
     def forward(self, x):
         ret = None
@@ -230,7 +230,7 @@ class DGCNN_cls(nn.Module):
         elif self.args.pool == "RDP":
             self.pool = RandPool(self.args.num_sample, self.args.num_agg, 128)
         elif self.args.pool == "MIP":
-            self.pool = MIPool(self.args.num_sample, self.args.num_agg, 128)
+            self.pool = MIPool(self.args.num_sample, self.args.num_agg, 128, self.args.num_neighs)
         self.linear1 = nn.Linear(args.emb_dims * 2, 512, bias=False)
         self.bn6 = nn.BatchNorm1d(512)
         self.dp1 = nn.Dropout(p=args.dropout)
@@ -301,7 +301,7 @@ class DGCNN_scan(nn.Module):
         elif self.args.pool == "RDP":
             self.pool = RandPool(self.args.num_sample, self.args.num_agg, 64)
         elif self.args.pool == "MIP":
-            self.pool = MIPool(self.args.num_sample, self.args.num_agg, 64)
+            self.pool = MIPool(self.args.num_sample, self.args.num_agg, 64, self.args.num_neighs)
 
         self.ec0 = EdgeConv(num_neighs=self.k, dims=[3, 64, 64])
         self.pn0 = MLP([64, args.emb_dims])
@@ -380,9 +380,9 @@ class DGCNN_partseg(nn.Module):
             self.pool2 = RandPool(self.args.num_points//16, self.k, 64, truncate=True)
             self.pool3 = RandPool(self.args.num_points//64, self.k, 64, truncate=True)
         elif self.args.pool == "MIP":
-            self.pool1 = MIPool(self.args.num_points//4,  self.k, 64, truncate=True)
-            self.pool2 = MIPool(self.args.num_points//16, self.k, 64, truncate=True)
-            self.pool3 = MIPool(self.args.num_points//64, self.k, 64, truncate=True)
+            self.pool1 = MIPool(self.args.num_points//4,  self.k, 64, self.args.num_neighs, truncate=True)
+            self.pool2 = MIPool(self.args.num_points//16, self.k, 64, self.args.num_neighs, truncate=True)
+            self.pool3 = MIPool(self.args.num_points//64, self.k, 64, self.args.num_neighs, truncate=True)
 
         self.ec0 = EdgeConv(num_neighs=self.k,    dims=[3, 64, 64])
         self.pn0 = MLP([64, 1024])
@@ -495,9 +495,9 @@ class DGCNN_semseg(nn.Module):
             self.pool1 = RandPool(self.args.num_points // 16, self.k, 64)
             self.pool2 = RandPool(self.args.num_points // 64, self.k, 64)
         elif self.args.pool == "MIP":
-            self.pool0 = MIPool(self.args.num_points // 4, self.k, 64)
-            self.pool1 = MIPool(self.args.num_points // 16, self.k, 64)
-            self.pool2 = MIPool(self.args.num_points // 64, self.k, 64)
+            self.pool0 = MIPool(self.args.num_points // 4, self.k, 64, self.args.num_neighs)
+            self.pool1 = MIPool(self.args.num_points // 16, self.k, 64, self.args.num_neighs)
+            self.pool2 = MIPool(self.args.num_points // 64, self.k, 64, self.args.num_neighs)
 
         self.ec1 = EdgeConv(num_neighs=self.k, dims=[9, 64, 64])
         self.ec2 = EdgeConv(num_neighs=self.k, dims=[64, 64, 64])

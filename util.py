@@ -305,7 +305,7 @@ class RandPool(nn.Module):
 
 
 class MIPool(nn.Module):
-    def __init__(self, num_sample, num_agg, num_channels, truncate=False):
+    def __init__(self, num_sample, num_agg, num_channels, num_neighs=0, truncate=False):
         super().__init__()
         '''
         num_sample: Number of sampled points
@@ -313,8 +313,9 @@ class MIPool(nn.Module):
         '''
         self.num_sample = num_sample
         self.num_agg = num_agg
+        self.num_neighs = num_neighs
         self.truncate = truncate
-        self.sampler = IndexSelect(num_sample, num_channels, neighs=self.num_agg)
+        self.sampler = IndexSelect(num_sample, num_channels, neighs=self.num_neighs)
         if self.truncate:
             self.conv = nn.Sequential(nn.Conv1d(num_channels * 2, num_channels, kernel_size=1, bias=False),
                                   nn.BatchNorm1d(num_channels),

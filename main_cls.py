@@ -295,7 +295,9 @@ if __name__ == "__main__":
                         help='Pooling method implemented')
     parser.add_argument('--num_sample', type=int, default=256,
                         help='num of sampled points')
-    parser.add_argument('--num_agg', type=int, default=20,
+    parser.add_argument('--num_neighs', type=int, default=20,
+                        help='num of neighbor points in MIP')
+    parser.add_argument('--num_agg', type=int, default=10,
                         help='num of aggregated points in pooling')
     parser.add_argument('--cd_weights', type=float, default=0.0, metavar='LR',
                         help='weights of cd_loss')
