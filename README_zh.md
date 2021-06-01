@@ -1,188 +1,212 @@
-# DGCNN.pytorch
-[[English]](README.md)
+# 3D Pool
+本仓库是硕士毕业论文《面向3D点云的深层神经网络池化研究》代码. 代码的主体框架借鉴自 [Antao97/dgcnn.pytorch](https://github.com/WangYueFt/dgcnn/tree/master/pytorch).
 
-本仓库提供了一份PyTorch版本的 **Dynamic Graph CNN for Learning on Point Clouds (DGCNN)**（ https://arxiv.xilesou.top/pdf/1801.07829 ）代码实现，代码框架来源于[WangYueFt/dgcnn](https://github.com/WangYueFt/dgcnn/tree/master/pytorch)。
-
-需要注意的是，在DGCNN文章中网络结构图（图3）中的分类网络和文章中对应的网络结构描述（第4.1节）并不吻合，原作者实际沿用了网络结构描述（第4.1节）中的网络结构，我们使用PS修复了网络结构图（图3）中不吻合的地方，修改后的图如下：
-
-&nbsp;
+&nbsp;论文的主体架构
 <p float="left">
-    <img src="image/DGCNN.jpg"/>
+    <img src="image/frame.svg"/>
 </p>
 
 &nbsp;
 
-**小建议：** 3D点云实验结果往往比2D图像实验结果面临更大的随机性，因此我们建议您多跑几次实验，然后选择最佳的结果。
-
-&nbsp;
-## 运行需求
+## Requirements
 - Python 3.7
 - PyTorch 1.2
 - CUDA 10.0
-- Python包：glob, h5py, sklearn
+- Package: glob, h5py, sklearn
 
 &nbsp;
-## 内容目录
-- [点云分类](#_3)
-- [点云局部分割](#_8)
-- [点云场景语义分割](#_13)
+## Contents
+- [Point Cloud Classification](#point-cloud-classification)
+- [Point Cloud Part Segmentation](#point-cloud-part-segmentation)
+- [Point Cloud Semantic Segmentation](#point-cloud-sementic-segmentation)
 
 &nbsp;
-## 点云分类
-### 运行训练脚本：
+## Global Description Guided Pooling 
+### Classification
 
-- 1024点
+#### ModelNet40
 
-``` 
-python main_cls.py --exp_name=cls_1024 --num_points=1024 --k=20 
-```
-
-- 2048点
+- train
 
 ``` 
-python main_cls.py --exp_name=cls_2048 --num_points=2048 --k=40 
+python main_cls.py --exp_name=GDP_M40 --model pointnet/dgcnn --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### 训练结束后运行评估脚本：
-
-- 1024点
+- eval
 
 ``` 
-python main_cls.py --exp_name=cls_1024_eval --num_points=1024 --k=20 --eval=True --model_path=checkpoints/cls_1024/models/model.t7
+python main_cls.py --eval True --exp_name=GDP_M40.eval --model pointnet/dgcnn --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- 2048点
+#### ScanObjectNN
 
-``` 
-python main_cls.py --exp_name=cls_2048_eval --num_points=2048 --k=40 --eval=True --model_path=checkpoints/cls_2048/models/model.t7
+- train
+
+```
+python main_scan.py --exp_name=GDP_scan --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### 使用提供的已训练模型运行评估脚本：
+- eval
 
-- 1024点
-
-``` 
-python main_cls.py --exp_name=cls_1024_eval --num_points=1024 --k=20 --eval=True --model_path=pretrained/model.cls.1024.t7
+```
+python main_scan.py --eval True --exp_name=GDP_scan.eval --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- 2048点
+### Segmentation
 
-``` 
-python main_cls.py --exp_name=cls_2048_eval --num_points=2048 --k=40 --eval=True --model_path=pretrained/model.cls.2048.t7
+#### ShapeNetPart
+
+- train
+
+```
+python main_part.py --exp_name=GDP_part --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### 模型性能：
-ModelNet40数据集
+- eval
 
-|  | 平均类别Acc | 整体Acc | 
-| :---: | :---: | :---: | 
-| 原文章（1024点） | 90.2 | 92.9 |
-| 本仓库（1024点） | **90.9** | **93.3** |
-| 原文章（2048点） | 90.7 | 93.5 |
-| 本仓库（2048点） | **91.2** | **93.6** |
-
-&nbsp;
-## 点云局部分割
-### 运行训练脚本：
-
-- 使用数据集内全部类别
-
-``` 
-python main_partseg.py --exp_name=partseg 
+```
+python main_part.py --eval True --exp_name=GDP_part.eval --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- 选择数据集内特定类别，例如airplane
+#### S3DIS
 
-``` 
-python main_partseg.py --exp_name=partseg_airplane --class_choice=airplane
+You have to download `Stanford3dDataset_v1.2_Aligned_Version.zip` manually from https://goo.gl/forms/4SoGp4KtH1jfRqEj2 .
+
+- train
+
+```
+python main_sem.py --exp_name=GDP_sem --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### 训练结束后运行评估脚本：
+- eval
 
-- 使用数据集内全部类别
-
-``` 
-python main_partseg.py --exp_name=partseg_eval --eval=True --model_path=checkpoints/partseg/models/model.t7
+```
+python main_sem.py --eval True --exp_name=GDP_sem.eval --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- 选择数据集内特定类别，例如airplane
+## Random Pooling 
 
-``` 
-python main_partseg.py --exp_name=partseg_airplane_eval --class_choice=airplane --eval=True --model_path=checkpoints/partseg_airplane/models/model.t7
+### Classification
+
+#### ModelNet40
+
+- train
+
+```
+python main_cls.py --exp_name=RDP_M40 --model pointnet/dgcnn --base_dir /path/to/data --pool RDP 
 ```
 
-### 使用提供的已训练模型运行评估脚本：
+- eval
 
-- 使用数据集内全部类别
-
-``` 
-python main_partseg.py --exp_name=partseg_eval --eval=True --model_path=pretrained/model.partseg.t7
+```
+python main_cls.py --eval True --exp_name=RDP_M40.eval --model pointnet/dgcnn --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-- 选择数据集内特定类别，例如airplane
+#### ScanObjectNN
 
-``` 
-python main_partseg.py --exp_name=partseg_airplane_eval --class_choice=airplane --eval=True --model_path=pretrained/model.partseg.airplane.t7
+- train
+
+```
+python main_scan.py --exp_name=RDP_scan --base_dir /path/to/data --pool RDP 
 ```
 
-### 模型性能
-ShapeNet part 数据集
+- eval
 
-| &emsp;&emsp;&emsp;&emsp; | 平均IoU | Airplane | Bag | Cap | Car | Chair | Earphone | Guitar | Knife | Lamp | Laptop | Motor | Mug | Pistol | Rocket | Skateboard | Table
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | 
-| 形状数量 | &emsp;&emsp;&emsp;&emsp; | 2690 | 76 | 55 | 898 | 3758 | 69 | 787 | 392 | 1547 | 451 | 202 | 184 | 283 | 66 | 152 | 5271 | 
-| 原文章 | **85.2** | 84.0 | **83.4** | **86.7** | 77.8 | 90.6 | 74.7 | 91.2 | **87.5** | 82.8 | **95.7** | 66.3 | **94.9** | 81.1 | **63.5** | 74.5 | 82.6 |
-| 本仓库 | **85.2** | **84.5** | 80.3 | 84.7 | **79.8** | **91.1** | **76.8** | **92.0** | 87.3 | **83.8** | **95.7** | **69.6** | 94.3 | **83.7** | 51.5 | **76.1** | **82.8** |
-
-&nbsp;
-## 点云场景语义分割
-
-在此任务中网络结构和点云局部分割有细微不同，最后的一个MLP尺寸改为（512, 256, 13），而且在256后只使用一个dropout。
-
-您必须从 https://goo.gl/forms/4SoGp4KtH1jfRqEj2 手动下载数据集`Stanford3dDataset_v1.2_Aligned_Version.zip`，然后将其放在`data/`目录下。
-
-### 运行训练脚本：
-
-此任务使用6折训练，因此需要训练6个模型，轮流选择数据集中6个区域中的1个作为这个模型的测试区域。
-
-- 在区域1-5上训练
-
-``` 
-python main_semseg.py --exp_name=semseg_6 --test_area=6 
+```
+python main_scan.py --eval True --exp_name=RDP_scan.eval --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-### 训练结束后运行评估脚本：
+### Segmentation
 
-- 当模型在区域1-5训练完成后，在区域6中评估
+#### ShapeNetPart
 
-``` 
-python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=checkpoints/semseg/models/
+- train
+
+```
+python main_part.py --exp_name=RDP_part --base_dir /path/to/data --pool RDP 
 ```
 
-- 当6个模型训练完成后，在所有区域上评估
+- eval
 
-``` 
-python main_semseg.py --exp_name=semseg_eval --test_area=all --eval=True --model_root=checkpoints/semseg/models/
+```
+python main_part.py --eval True --exp_name=RDP_part.eval --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-### 使用提供的已训练模型运行评估脚本：
+#### S3DIS
 
-- 使用提供的在区域1-5上已训练模型，在区域6中评估
+- train
 
-``` 
-python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=pretrained/semseg/
+```
+python main_sem.py --exp_name=RDP_sem --base_dir /path/to/data --pool RDP
 ```
 
-- 使用提供的6个已训练模型，在所有区域上评估
+- eval
 
-``` 
-python main_semseg.py --exp_name=semseg_eval --test_area=all --eval=True --model_root=pretrained/semseg/
+```
+python main_sem.py --eval True --exp_name=RDP_sem.eval --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-### 模型性能：
-斯坦福大学大型3D室内空间数据集（S3DIS）
+## Mutual Infomax Pooling 
 
-|  | 平均IoU | 整体Acc | 
-| :---: | :---: | :---: | 
-| 原文章 | 56.1 | 84.1 |
-| 本仓库 | **59.2** | **85.0** |
+### Classification
+
+#### ModelNet40
+
+- train
+
+```
+python main_cls.py --exp_name=MIP_M40 --model pointnet/dgcnn --base_dir /path/to/data --pool MIP --mi_weights 1 
+```
+
+- eval
+
+```
+python main_cls.py --eval True --exp_name=MIP_M40.eval --model pointnet/dgcnn --base_dir /path/to/data --pool MIP --model_path /path/to/model --mi_weights 1
+```
+
+#### ScanObjectNN
+
+- train
+
+```
+python main_scan.py --exp_name=MIP_scan --base_dir /path/to/data --pool MIP --mi_weights 1 
+```
+
+- eval
+
+```
+python main_scan.py --eval True --exp_name=MIP_scan.eval --base_dir /path/to/data --pool MIP --mi_weights 1 --model_path /path/to/model
+```
+
+### Segmentation
+
+#### ShapeNetPart
+
+- train
+
+```
+python main_part.py --exp_name=MIP_part --base_dir /path/to/data --pool MIP --mi_weights 1
+```
+
+- eval
+
+```
+python main_part.py --eval True --exp_name=MIP_part.eval --base_dir /path/to/data --pool MIP --mi_weights 1 --model_path /path/to/model
+```
+
+#### S3DIS
+
+- train
+
+```
+python main_sem.py --exp_name=MIP_sem --base_dir /path/to/data --pool MIP --mi_weights 1
+```
+
+- eval
+
+```
+python main_sem.py --eval True --exp_name=MIP_sem.eval --base_dir /path/to/data --pool MIP --mi_weights 1 --model_path /path/to/model
+```
+
+
+

@@ -1,13 +1,13 @@
 # DGCNN.pytorch
 [[中文版]](README_zh.md)
 
-This repo is a PyTorch implementation for **Dynamic Graph CNN for Learning on Point Clouds (DGCNN)**(https://arxiv.xilesou.top/pdf/1801.07829). Our code skeleton is borrowed from [WangYueFt/dgcnn](https://github.com/WangYueFt/dgcnn/tree/master/pytorch).
+This repo is a PyTorch implementation for **Research on Pooling Methods for 3D Point Cloud**. Our code skeleton is borrowed from [Antao97/dgcnn.pytorch](https://github.com/WangYueFt/dgcnn/tree/master/pytorch).
 
-Note that the network structure (Fig. 3) for classification in DGCNN paper is not consistent with the corresponding description in section 4.1 of the paper. The author of DGCNN adopts the setting of classification network in section 4.1, not Fig. 3. We fixed this mistake in Fig. 3 using PS and present the revised figure below.
+Note that we did not implement T-Net in all our models.
 
 &nbsp;
 <p float="left">
-    <img src="image/DGCNN.jpg"/>
+    <img src="image/fram-EN.svg"/>
 </p>
 
 &nbsp;
@@ -28,161 +28,192 @@ Note that the network structure (Fig. 3) for classification in DGCNN paper is no
 - [Point Cloud Semantic Segmentation](#point-cloud-sementic-segmentation)
 
 &nbsp;
-## Point Cloud Classification
-### Run the training script:
+## Global Description Guided Pooling 
+### Classification
 
-- 1024 points
+#### ModelNet40
 
-``` 
-python main_cls.py --exp_name=cls_1024 --num_points=1024 --k=20 
-```
-
-- 2048 points
+- train
 
 ``` 
-python main_cls.py --exp_name=cls_2048 --num_points=2048 --k=40 
+python main_cls.py --exp_name=GDP_M40 --model pointnet/dgcnn --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### Run the evaluation script after training finished:
-
-- 1024 points
+- eval
 
 ``` 
-python main_cls.py --exp_name=cls_1024_eval --num_points=1024 --k=20 --eval=True --model_path=checkpoints/cls_1024/models/model.t7
+python main_cls.py --eval True --exp_name=GDP_M40.eval --model pointnet/dgcnn --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- 2048 points
+#### ScanObjectNN
 
-``` 
-python main_cls.py --exp_name=cls_2048_eval --num_points=2048 --k=40 --eval=True --model_path=checkpoints/cls_2048/models/model.t7
+- train
+
+```
+python main_scan.py --exp_name=GDP_scan --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### Run the evaluation script with pretrained models:
+- eval
 
-- 1024 points
-
-``` 
-python main_cls.py --exp_name=cls_1024_eval --num_points=1024 --k=20 --eval=True --model_path=pretrained/model.cls.1024.t7
+```
+python main_scan.py --eval True --exp_name=GDP_scan.eval --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- 2048 points
+### Segmentation
 
-``` 
-python main_cls.py --exp_name=cls_2048_eval --num_points=2048 --k=40 --eval=True --model_path=pretrained/model.cls.2048.t7
+#### ShapeNetPart
+
+- train
+
+```
+python main_part.py --exp_name=GDP_part --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### Performance:
-ModelNet40 dataset
+- eval
 
-|  | Mean Class Acc | Overall Acc | 
-| :---: | :---: | :---: | 
-| Paper (1024 points) | 90.2 | 92.9 |
-| This repo (1024 points) | **90.9** | **93.3** |
-| Paper (2048 points) | 90.7 | 93.5 |
-| This repo (2048 points) | **91.2** | **93.6** |
-
-&nbsp;
-## Point Cloud Part Segmentation
-### Run the training script:
-
-- Full dataset
-
-``` 
-python main_partseg.py --exp_name=partseg 
+```
+python main_part.py --eval True --exp_name=GDP_part.eval --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- With class choice, for example airplane 
+#### S3DIS
 
-``` 
-python main_partseg.py --exp_name=partseg_airplane --class_choice=airplane
+You have to download `Stanford3dDataset_v1.2_Aligned_Version.zip` manually from https://goo.gl/forms/4SoGp4KtH1jfRqEj2 .
+
+- train
+
+```
+python main_sem.py --exp_name=GDP_sem --base_dir /path/to/data --pool GDP --cd_weights 0.01
 ```
 
-### Run the evaluation script after training finished:
+- eval
 
-- Full dataset
-
-``` 
-python main_partseg.py --exp_name=partseg_eval --eval=True --model_path=checkpoints/partseg/models/model.t7
+```
+python main_sem.py --eval True --exp_name=GDP_sem.eval --base_dir /path/to/data --pool GDP --cd_weights 0.01 --model_path /path/to/model
 ```
 
-- With class choice, for example airplane 
+## Random Pooling 
 
-``` 
-python main_partseg.py --exp_name=partseg_airplane_eval --class_choice=airplane --eval=True --model_path=checkpoints/partseg_airplane/models/model.t7
+### Classification
+
+#### ModelNet40
+
+- train
+
+```
+python main_cls.py --exp_name=RDP_M40 --model pointnet/dgcnn --base_dir /path/to/data --pool RDP 
 ```
 
-### Run the evaluation script with pretrained models:
+- eval
 
-- Full dataset
-
-``` 
-python main_partseg.py --exp_name=partseg_eval --eval=True --model_path=pretrained/model.partseg.t7
+```
+python main_cls.py --eval True --exp_name=RDP_M40.eval --model pointnet/dgcnn --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-- With class choice, for example airplane 
+#### ScanObjectNN
 
-``` 
-python main_partseg.py --exp_name=partseg_airplane_eval --class_choice=airplane --eval=True --model_path=pretrained/model.partseg.airplane.t7
+- train
+
+```
+python main_scan.py --exp_name=RDP_scan --base_dir /path/to/data --pool RDP 
 ```
 
-### Performance:
-ShapeNet part dataset
+- eval
 
-| | Mean IoU | Airplane | Bag | Cap | Car | Chair | Earphone | Guitar | Knife | Lamp | Laptop | Motor | Mug | Pistol | Rocket | Skateboard | Table
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | 
-| Shapes | | 2690 | 76 | 55 | 898 | 3758 | 69 | 787 | 392 | 1547 | 451 | 202 | 184 | 283 | 66 | 152 | 5271 | 
-| Paper | **85.2** | 84.0 | **83.4** | **86.7** | 77.8 | 90.6 | 74.7 | 91.2 | **87.5** | 82.8 | **95.7** | 66.3 | **94.9** | 81.1 | **63.5** | 74.5 | 82.6 |
-| This repo | **85.2** | **84.5** | 80.3 | 84.7 | **79.8** | **91.1** | **76.8** | **92.0** | 87.3 | **83.8** | **95.7** | **69.6** | 94.3 | **83.7** | 51.5 | **76.1** | **82.8** |
-
-&nbsp;
-## Point Cloud Semantic Segmentation
-
-The network structure for this task is slightly different with part segmentation, without spatial transform and categorical vector. The MLP in the end is changed into (512, 256, 13) and only one dropout is used after 256. 
-
-You have to download `Stanford3dDataset_v1.2_Aligned_Version.zip` manually from https://goo.gl/forms/4SoGp4KtH1jfRqEj2 and place it under `data/`
-
-### Run the training script:
-
-This task use 6-fold training, such that 6 models are trained leaving 1 of 6 areas as the testing area for each model. 
-
-- Train in area 1-5
-
-``` 
-python main_semseg.py --exp_name=semseg_6 --test_area=6 
+```
+python main_scan.py --eval True --exp_name=RDP_scan.eval --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-### Run the evaluation script after training finished:
+### Segmentation
 
-- Evaluate in area 6 after model is trained in area 1-5
+#### ShapeNetPart
 
-``` 
-python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=checkpoints/semseg/models/
+- train
+
+```
+python main_part.py --exp_name=RDP_part --base_dir /path/to/data --pool RDP 
 ```
 
-- Evaluate in all areas after 6 models are trained
+- eval
 
-``` 
-python main_semseg.py --exp_name=semseg_eval --test_area=all --eval=True --model_root=checkpoints/semseg/models/
+```
+python main_part.py --eval True --exp_name=RDP_part.eval --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-### Run the evaluation script with pretrained models:
+#### S3DIS
 
-- Evaluate in area 6
+- train
 
-``` 
-python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=pretrained/semseg/
+```
+python main_sem.py --exp_name=RDP_sem --base_dir /path/to/data --pool RDP
 ```
 
-- Evaluate in all areas
+- eval
 
-``` 
-python main_semseg.py --exp_name=semseg_eval --test_area=all --eval=True --model_root=pretrained/semseg/
+```
+python main_sem.py --eval True --exp_name=RDP_sem.eval --base_dir /path/to/data --pool RDP --model_path /path/to/model
 ```
 
-### Performance:
-Stanford Large-Scale 3D Indoor Spaces Dataset (S3DIS) dataset
+## Mutual Infomax Pooling 
 
-|  | Mean IoU | Overall Acc | 
-| :---: | :---: | :---: | 
-| Paper | 56.1 | 84.1 |
-| This repo | **59.2** | **85.0** |
+### Classification
+
+#### ModelNet40
+
+- train
+
+```
+python main_cls.py --exp_name=MIP_M40 --model pointnet/dgcnn --base_dir /path/to/data --pool MIP --mi_weights 1 
+```
+
+- eval
+
+```
+python main_cls.py --eval True --exp_name=MIP_M40.eval --model pointnet/dgcnn --base_dir /path/to/data --pool MIP --model_path /path/to/model --mi_weights 1
+```
+
+#### ScanObjectNN
+
+- train
+
+```
+python main_scan.py --exp_name=MIP_scan --base_dir /path/to/data --pool MIP --mi_weights 1 
+```
+
+- eval
+
+```
+python main_scan.py --eval True --exp_name=MIP_scan.eval --base_dir /path/to/data --pool MIP --mi_weights 1 --model_path /path/to/model
+```
+
+### Segmentation
+
+#### ShapeNetPart
+
+- train
+
+```
+python main_part.py --exp_name=MIP_part --base_dir /path/to/data --pool MIP --mi_weights 1
+```
+
+- eval
+
+```
+python main_part.py --eval True --exp_name=MIP_part.eval --base_dir /path/to/data --pool MIP --mi_weights 1 --model_path /path/to/model
+```
+
+#### S3DIS
+
+- train
+
+```
+python main_sem.py --exp_name=MIP_sem --base_dir /path/to/data --pool MIP --mi_weights 1
+```
+
+- eval
+
+```
+python main_sem.py --eval True --exp_name=MIP_sem.eval --base_dir /path/to/data --pool MIP --mi_weights 1 --model_path /path/to/model
+```
+
+
+
