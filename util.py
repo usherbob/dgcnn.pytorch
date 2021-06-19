@@ -195,6 +195,7 @@ class IndexSelect(nn.Module):
                                 nn.ReLU())
         self.disc = Discriminator(n_h)
         self.center = EdgeConv(neighs, [n_h, n_h])
+        print("neighbors:{}".format(neighs))
 
     def forward(self, xyz, seq1, samp_bias1=None, samp_bias2=None):
         # seq2 = torch.zeros_like(seq1)

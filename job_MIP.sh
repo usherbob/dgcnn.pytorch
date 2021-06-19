@@ -1,0 +1,2 @@
+#CUDA_VISIBLE_DEVICES=0 python main_cls.py --pool MIP --model pointnet --num_neighs $n --num_agg 10 --num_sample 256 --mi_weights 1.0 --exp_name pn.mip0.sam256.agg10.nn$n
+CUDA_VISIBLE_DEVICES=0 python main_cls.py --base_dir /data4/jiahuawang --pool MIP --model pointnet --num_neighs 10 --num_agg 10 --num_sample 256 --mi_weights 1.0 --exp_name pn.mip0.sam256.agg10.nn10.eval --eval True --model_path /data4/jiahuawang/ckpt/cls/pn.mip0.sam256.agg10.nn10/models/model.t7

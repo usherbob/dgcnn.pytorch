@@ -1,2 +1,4 @@
+torch==1.8.0
+torchvision==0.9.0
 h5py
 scikit-learn
